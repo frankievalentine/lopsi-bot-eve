@@ -1,6 +1,10 @@
 "use client";
 
-import { ClientError } from "eve/client";
+import {
+  ClientError,
+  type ClientSessionState,
+  type SessionStreamEvent,
+} from "eve/client";
 import type { Activity, SessionView } from "eve/events";
 import {
   activeTurn,
@@ -57,12 +61,14 @@ import {
   recordReply,
   setCurrentChat,
 } from "@/lib/chat-history";
+import type { Transcript } from "@/lib/chat-store";
 import type { CrewMember } from "@/lib/crew.generated";
 import { cn } from "@/lib/utils";
 import { formatWhen } from "@/lib/when";
 import type { Account } from "./account";
 import { EveMessageView, textOf } from "./eve-message";
 import { useSignInRedirect } from "./use-sign-in-redirect";
+import { useTranscriptSaving } from "./use-transcript-saving";
 
 /** Ported from lopsi-bot's chat-view.tsx, on eve's `useEveAgent`. */
 
@@ -76,8 +82,51 @@ export interface CrewChatProps {
   readonly onEdit?: () => void;
   readonly onMood: (mood: MascotMood) => void;
   readonly owner: string;
+  /** Production mode: save the transcript to the server as it grows. */
+  readonly persist?: boolean;
+  /** The chat's saved transcript, shown before eve catches up. */
+  readonly saved?: Transcript | undefined;
   /** The chat to resume, from the URL; absent for a new chat. */
   readonly sessionId?: string;
+}
+
+/** A chat eve can't continue: ended, or its run data deleted. */
+const ENDED_CODES = new Set(["session_not_active", "session_expired"]);
+
+/** Where the chat starts: its saved transcript, or the URL's session replayed from the start. */
+function restoreFrom(
+  saved: Transcript | undefined,
+  sessionId: string | undefined
+): {
+  initialEvents: SessionStreamEvent[];
+  initialSession: ClientSessionState | undefined;
+} {
+  if (saved !== undefined) {
+    return {
+      initialEvents: saved.events as SessionStreamEvent[],
+      initialSession: saved.session as ClientSessionState,
+    };
+  }
+  return {
+    initialEvents: [],
+    initialSession:
+      sessionId === undefined ? undefined : { sessionId, streamIndex: 0 },
+  };
+}
+
+/** Whether eve can't continue the chat, and the error to show otherwise. */
+function noticesFor(
+  error: Error | undefined,
+  actionError: string | undefined,
+  failed: string | undefined
+): { errorMessage: string | undefined; sessionEnded: boolean } {
+  const sessionEnded =
+    error instanceof ClientError && ENDED_CODES.has(error.code);
+  return {
+    errorMessage:
+      actionError ?? (sessionEnded ? undefined : error?.message) ?? failed,
+    sessionEnded,
+  };
 }
 
 export function CrewChat({
@@ -88,6 +137,8 @@ export function CrewChat({
   onEdit,
   onMood,
   owner,
+  persist = false,
+  saved,
   sessionId,
 }: CrewChatProps) {
   const [actionError, setActionError] = useState<string>();
@@ -120,8 +171,7 @@ export function CrewChat({
 
   const agent = useEveAgent({
     agent: member.id,
-    initialSession:
-      sessionId === undefined ? undefined : { sessionId, streamIndex: 0 },
+    ...restoreFrom(saved, sessionId),
     onSessionChange(session) {
       if (session !== undefined) {
         adopt(session.sessionId);
@@ -131,6 +181,13 @@ export function CrewChat({
     resume: sessionId !== undefined,
   });
   useSignInRedirect(agent.error);
+  useTranscriptSaving({
+    busy: agent.status === "busy",
+    enabled: persist,
+    events: agent.events,
+    loaded: saved?.events.length ?? 0,
+    session: agent.session,
+  });
 
   const activeSessionId = sessionId ?? agent.session?.sessionId;
   const isBusy = agent.status === "busy";
@@ -146,11 +203,11 @@ export function CrewChat({
     isBusy || isResuming
       ? undefined
       : failure(agent.view, turns(agent.view).at(-1)?.turnId);
-  const errorMessage =
-    actionError ?? agent.error?.message ?? failureMessage(failed);
-  const sessionEnded =
-    agent.error instanceof ClientError &&
-    agent.error.code === "session_not_active";
+  const { errorMessage, sessionEnded } = noticesFor(
+    agent.error ?? undefined,
+    actionError,
+    failureMessage(failed)
+  );
 
   const { finished, setFinished } = useReplyTracking({
     activeSessionId,
@@ -307,6 +364,7 @@ export function CrewChat({
           {errorMessage === undefined ? null : (
             <ErrorNotice message={errorMessage} onRetry={retry} />
           )}
+          {sessionEnded ? <EndedNotice onNewChat={startNewChat} /> : null}
         </ConversationContent>
         <ConversationScrollButton />
       </Conversation>
@@ -571,6 +629,18 @@ function ChatHistoryMenu({
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/** A chat eve can't continue: its messages stay readable, and a new chat picks up. */
+function EndedNotice({ onNewChat }: { readonly onNewChat: () => void }) {
+  return (
+    <div className="bg-muted/40 text-muted-foreground flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-sm">
+      <span>This chat has ended. Start a new one to keep going.</span>
+      <Button onClick={onNewChat} size="sm" variant="outline">
+        New chat
+      </Button>
+    </div>
   );
 }
 

@@ -1,8 +1,16 @@
 import { notFound, redirect } from "next/navigation";
+import { currentChatOwner } from "@/lib/chat-owner";
+import {
+  type ChatRecord,
+  listChats,
+  loadTranscript,
+  type Transcript,
+} from "@/lib/chat-store";
 import { configuredConnectors } from "@/lib/connectors";
 import { CREW } from "@/lib/crew.generated";
 import { currentAccount } from "@/lib/current-account";
 import { configChangesUnavailable } from "@/lib/github";
+import { isSessionOwnedBy } from "@/lib/session-owners";
 import { CrewApp } from "./crew-app";
 import { SignInWithVercel } from "./sign-in-with-vercel";
 
@@ -48,6 +56,7 @@ export async function CrewPage({
           available: reason === undefined,
           ...(reason === undefined ? {} : { reason }),
         };
+  const history = await savedHistory(sessionId);
   return (
     <CrewApp
       account={account}
@@ -55,6 +64,34 @@ export async function CrewPage({
       connectors={connectors}
       memberId={memberId}
       sessionId={sessionId}
+      {...history}
     />
   );
+}
+
+/**
+ * Production mode's server-side history: the person's chat list, and the open
+ * chat's saved transcript when it's theirs. A storage failure falls back to
+ * what eve and the browser have.
+ */
+async function savedHistory(sessionId: string | undefined): Promise<{
+  chatList?: readonly ChatRecord[];
+  savedTranscript?: Transcript;
+}> {
+  const owner = await currentChatOwner();
+  if (owner === undefined) {
+    return {};
+  }
+  const [chatList, savedTranscript] = await Promise.all([
+    listChats(owner).catch(() => undefined),
+    sessionId === undefined
+      ? undefined
+      : isSessionOwnedBy(sessionId, owner)
+          .then((owned) => (owned ? loadTranscript(sessionId) : undefined))
+          .catch(() => undefined),
+  ]);
+  return {
+    chatList: chatList ?? [],
+    ...(savedTranscript ? { savedTranscript } : {}),
+  };
 }

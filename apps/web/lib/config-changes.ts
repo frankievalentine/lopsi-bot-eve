@@ -32,12 +32,13 @@ const GENERATED = "apps/web/lib/crew.generated.ts";
 const TEMPLATE_MEMBER = "lopsi";
 /**
  * What a new member copies from the template member: its channel (access modes
- * and the chat owner check), connections, and hardening (session budget,
- * sandbox network policy, web_fetch approval).
+ * and the chat owner check), connections, hooks (the chat list), and hardening
+ * (session budget, sandbox network policy, web_fetch approval).
  */
 const TEMPLATE_PATHS = [
   "agent/channels/",
   "agent/connections/",
+  "agent/hooks/",
   "agent/tools/",
   "agent/limits.ts",
   "agent/sandbox.ts",

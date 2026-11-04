@@ -38,7 +38,7 @@ Don't use `eve add channel/web` for this: its files would replace the ones here 
 
 ### Who can see a chat
 
-In production mode a chat belongs to the person who started it: a teammate with its link can't read it, add to it, or answer its approvals. eve doesn't do this on its own; the agent records each session's owner when its first turn starts and checks it on every request. In starter mode everyone shares one identity, so everyone with the password shares every chat. The list of chats is kept in each browser, per person; it doesn't follow you to another device.
+In production mode a chat belongs to the person who started it: a teammate with its link can't read it, add to it, or answer its approvals. eve doesn't do this on its own; the agent records each session's owner when its first turn starts and checks it on every request. In starter mode everyone shares one identity, so everyone with the password shares every chat. In production mode your chats are also kept on the server, in the same private Blob store: the list (written by the agent as you chat, so it's the same on every device) and each chat's transcript (saved by the chat as it grows), so an ended chat stays readable after eve deletes its run data. In starter mode the list is kept in each browser, per person, and doesn't follow you to another device.
 
 ### What the crew can reach
 

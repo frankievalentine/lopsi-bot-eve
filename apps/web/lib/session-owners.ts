@@ -15,8 +15,11 @@ import { BlobNotFoundError, get, put } from "@vercel/blob";
 import { ForbiddenError } from "eve/channels/auth";
 import type { SessionAuthContext } from "eve/context";
 
+/** The authenticator of people signed in with Vercel (production mode). */
+export const SIGNED_IN_AUTHENTICATOR = "better-auth:vercel";
+
 /** The parts of a principal that identify a person across requests. */
-interface SessionOwner {
+export interface SessionOwner {
   readonly authenticator: string;
   readonly principalId: string;
 }
@@ -108,6 +111,25 @@ async function sessionOwner(
   ) as SessionOwner;
   owners.set(sessionId, owner);
   return owner;
+}
+
+/**
+ * Whether `person` started the session. A session with no owner recorded yet
+ * isn't anyone's, so it's `false`.
+ */
+export async function isSessionOwnedBy(
+  sessionId: string,
+  person: SessionOwner
+): Promise<boolean> {
+  if (!SESSION_ID.test(sessionId)) {
+    return false;
+  }
+  const owner = await sessionOwner(sessionId);
+  return (
+    owner !== undefined &&
+    owner.principalId === person.principalId &&
+    owner.authenticator === person.authenticator
+  );
 }
 
 /**
