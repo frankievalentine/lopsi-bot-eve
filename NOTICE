@@ -1,9 +1,8 @@
 Lopsi Bot for eve
 Copyright 2026 Lopsi Bot contributors
 
-The dashboard in apps/web is ported from Lopsi Bot's apps/web
-(https://github.com/frankievalentine/lopsi-bot), Copyright 2026 Lopsi Bot
-contributors, licensed under the Apache License 2.0: components/mascot.tsx,
+The dashboard in apps/web is ported from Lopsi Bot's apps/web, Copyright 2026
+Lopsi Bot contributors, licensed under the Apache License 2.0: components/mascot.tsx,
 components/crew-icon.tsx, components/l-mark.tsx, lib/favicon.tsx, lib/when.ts,
 the public/ icons, the theme in app/globals.css, and the crew list and chat
 views in app/_components.
