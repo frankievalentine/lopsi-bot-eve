@@ -182,7 +182,10 @@ export function CrewChat({
     resume: sessionId !== undefined,
   });
   useSignInRedirect(agent.error);
-  const computer = useComputer(agent.view);
+  const computer = useComputer(agent.view, {
+    sessionId: sessionId ?? agent.session?.sessionId,
+    snapshots: persist,
+  });
   useTranscriptSaving({
     busy: agent.status === "busy",
     enabled: persist,

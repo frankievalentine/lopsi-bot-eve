@@ -1,13 +1,13 @@
 "use client";
 
-import { type CallState, calls, type SessionView } from "eve/events";
+import { type CallState, calls, type SessionView, turns } from "eve/events";
 import {
   ChevronRightIcon,
   FileTextIcon,
   MonitorIcon,
   XIcon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,10 +22,17 @@ import {
   type ComputerActivity,
   computerActivity,
   type FileEntry,
+  withWorkspace,
 } from "@/lib/computer-activity";
 import { useIsPhone } from "@/lib/use-phone";
 import { cn } from "@/lib/utils";
 import { formatWhen } from "@/lib/when";
+import type { WorkspaceSnapshot } from "@/lib/workspace-store";
+
+/** What the panel shows: the chat's activity, plus when its workspace snapshot was taken. */
+type PanelActivity = ComputerActivity & {
+  readonly takenAt?: string | undefined;
+};
 
 /** Opens the chat's computer panel: what its sandbox ran and the files it touched. */
 export function ComputerButton({
@@ -159,7 +166,10 @@ function CommandItem({ run }: { readonly run: CommandRun }) {
 }
 
 function FileView({ file }: { readonly file: FileEntry }) {
-  if (file.stored) {
+  if (file.skipped === "binary") {
+    return <Note>This file isn't text, so it isn't shown.</Note>;
+  }
+  if (file.stored || file.skipped === "large") {
     return <Note>This file is too large to show here.</Note>;
   }
   return (
@@ -170,7 +180,14 @@ function FileView({ file }: { readonly file: FileEntry }) {
   );
 }
 
-function FilesTab({ files }: { readonly files: readonly FileEntry[] }) {
+function FilesTab({
+  files,
+  takenAt,
+}: {
+  readonly files: readonly FileEntry[];
+  /** When the workspace snapshot was taken; absent without snapshots. */
+  readonly takenAt?: string | undefined;
+}) {
   const [selected, setSelected] = useState<string | undefined>(undefined);
   const file = files.find((entry) => entry.path === selected) ?? files[0];
   if (file === undefined) {
@@ -202,10 +219,14 @@ function FilesTab({ files }: { readonly files: readonly FileEntry[] }) {
         ))}
       </ul>
       <FileView file={file} />
-      <Note>
-        Files the shell made on its own don't show here, only ones the agent
-        wrote or read.
-      </Note>
+      {takenAt === undefined ? (
+        <Note>
+          Files the shell made on its own don't show here, only ones the agent
+          wrote or read.
+        </Note>
+      ) : (
+        <Note>{`Workspace as of ${formatWhen(takenAt)}.`}</Note>
+      )}
     </div>
   );
 }
@@ -216,7 +237,7 @@ function ComputerPanel({
   className,
   onClose,
 }: {
-  readonly activity: ComputerActivity;
+  readonly activity: PanelActivity;
   readonly className?: string;
   readonly onClose?: () => void;
 }) {
@@ -260,20 +281,82 @@ function ComputerPanel({
           )}
         </TabsContent>
         <TabsContent className="min-h-0 overflow-auto p-4" value="files">
-          <FilesTab files={activity.files} />
+          <FilesTab files={activity.files} takenAt={activity.takenAt} />
         </TabsContent>
       </Tabs>
     </aside>
   );
 }
 
+/** After a turn settles, eve's hook takes the snapshot; give it a moment. */
+const SNAPSHOT_DELAY_MS = 2500;
+
+/**
+ * The chat's latest workspace snapshot, while the panel is open: fetched on
+ * opening and after each turn settles. Production mode only.
+ */
+function useWorkspaceSnapshot(
+  sessionId: string | undefined,
+  enabled: boolean,
+  settledTurns: number
+): WorkspaceSnapshot | undefined {
+  const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>();
+  useEffect(() => {
+    if (!enabled || sessionId === undefined) {
+      return;
+    }
+    let current = true;
+    const load = () =>
+      // The settled-turn count names the snapshot wanted, so a cached response isn't reused.
+      fetch(
+        `/api/chats/${encodeURIComponent(sessionId)}/workspace?turns=${settledTurns}`
+      )
+        .then(async (response) =>
+          response.status === 200
+            ? ((await response.json()) as WorkspaceSnapshot)
+            : undefined
+        )
+        .then((next) => {
+          if (current && next) {
+            setSnapshot(next);
+          }
+        })
+        .catch(() => undefined);
+    load();
+    const timer = setTimeout(load, SNAPSHOT_DELAY_MS);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  }, [enabled, sessionId, settledTurns]);
+  return snapshot;
+}
+
 /** The chat's computer: what its sandbox did, and whether the panel is open. */
-export function useComputer(view: SessionView) {
+export function useComputer(
+  view: SessionView,
+  {
+    sessionId,
+    snapshots,
+  }: { readonly sessionId: string | undefined; readonly snapshots: boolean }
+) {
   const [open, setOpen] = useState(false);
-  const activity = useMemo(
-    () => computerActivity(calls(view, { kind: "tool" })),
-    [view]
+  const settledTurns = turns(view).filter(
+    (turn) => turn.status === "settled"
+  ).length;
+  const snapshot = useWorkspaceSnapshot(
+    sessionId,
+    snapshots && open,
+    settledTurns
   );
+  const activity = useMemo(() => {
+    const fromChat = computerActivity(calls(view, { kind: "tool" }));
+    return {
+      ...fromChat,
+      files: withWorkspace(fromChat.files, snapshot),
+      takenAt: snapshot?.takenAt,
+    };
+  }, [view, snapshot]);
   return {
     activity,
     close: () => setOpen(false),
@@ -288,7 +371,7 @@ export function ComputerSurface({
   onClose,
   open,
 }: {
-  readonly activity: ComputerActivity;
+  readonly activity: PanelActivity;
   readonly onClose: () => void;
   readonly open: boolean;
 }) {

@@ -63,7 +63,7 @@ agents/<name>/
 
 To add one, create the directory (start from `agents/lopsi/`), then run `pnpm crew` to regenerate the dashboard's crew list. `pnpm validate` fails if you forget. `crew.json` is described by `scripts/crew.schema.json`; an optional `order` sets its place in the crew list (lowest first, the rest by directory name). Without a `crew.json`, the agent still appears, named after its directory. Its chat lives at `/c/<name>`.
 
-Each chat has its own sandbox. The **Computer** button in the chat header shows what it did: the shell commands it ran, with their output and exit codes, and the files the crew member wrote or read. Files the shell made on its own don't show there yet.
+Each chat has its own sandbox. The **Computer** button in the chat header shows what it did: the shell commands it ran, with their output and exit codes, and the files the crew member wrote or read. In production mode the agent also snapshots the workspace after each turn that used the shell or wrote a file (small text files' content, every file's name and size, in the private Blob store), so files the shell made on its own show too.
 
 ## Changing the crew from the dashboard
 
