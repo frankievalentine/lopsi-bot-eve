@@ -1,6 +1,4 @@
-<p align="center">
-  <img alt="Lopsi Bot" height="96" src="apps/web/public/l-mark.svg" width="96">
-</p>
+<img alt="Lopsi Bot" height="96" src="apps/web/public/l-mark.svg" width="96">
 
 # Lopsi Bot for eve
 
