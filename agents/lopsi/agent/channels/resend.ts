@@ -1,9 +1,12 @@
-import { randomBytes } from "node:crypto";
-import { createMemoryState } from "@chat-adapter/state-memory";
-import { createRedisState } from "@chat-adapter/state-redis";
 import { createResendAdapter } from "@resend/chat-sdk-adapter";
-import type { Message, Thread } from "chat";
-import { chatSdkChannel, messageContentOf } from "eve/channels/chat-sdk";
+import type { Message } from "chat";
+import { chatSdkChannel } from "eve/channels/chat-sdk";
+import { webhookSecretVariable } from "../../../../apps/web/lib/channel-core.mjs";
+import {
+  buildAdapter,
+  channelState,
+  guardChannel,
+} from "../../../../apps/web/lib/channel-guard.js";
 import {
   bareAddress,
   emailSetup,
@@ -18,39 +21,38 @@ const MEMBER_ID = "lopsi";
 
 const setup = emailSetup(MEMBER_ID);
 const name = crew.name ?? MEMBER_ID;
+const SECRET = webhookSecretVariable(MEMBER_ID);
 
 /**
  * Email for this crew member, at `<member>@LOPSI_EMAIL_DOMAIN`, through Resend
  * (apps/web/lib/email.ts, `pnpm setup:email`). Its webhook is
- * `/eve/<member>/v1/resend`. Until email is set up, a random secret makes
- * every webhook fail Resend's signature check.
+ * `/eve/<member>/v1/resend`. Until email is set up, its adapter gets
+ * placeholders (buildAdapter), so every webhook fails Resend's signature check.
  */
 const { bot, channel, send } = chatSdkChannel({
   adapters: {
-    resend: createResendAdapter({
-      apiKey: setup?.apiKey ?? "re_unconfigured",
-      fromAddress: setup?.address ?? `${MEMBER_ID}@unconfigured.invalid`,
-      fromName: name,
-      webhookSecret:
-        setup?.webhookSecret ?? `whsec_${randomBytes(24).toString("base64")}`,
-    }),
+    resend: buildAdapter(setup !== undefined, ["RESEND_API_KEY", SECRET], () =>
+      createResendAdapter({
+        apiKey: process.env.RESEND_API_KEY ?? "",
+        fromAddress: setup?.address ?? `${MEMBER_ID}@unconfigured.invalid`,
+        fromName: name,
+        webhookSecret: process.env[SECRET] ?? "",
+      })
+    ),
   },
   // A message arriving mid-reply joins the running turn.
   concurrency: "concurrent",
-  state: setup
-    ? createRedisState({ keyPrefix: `lopsi:${MEMBER_ID}`, url: setup.redisUrl })
-    : createMemoryState(),
+  state: channelState(`lopsi:${MEMBER_ID}`, setup !== undefined),
   // Email can't edit a sent message, so each reply posts once.
   streaming: false,
   userName: name,
 });
 
 /**
- * Whether to answer: mail to this member, from an allowed sender, whose
- * domain vouches for it (DMARC). Anything else is dropped without a reply, so
- * a stranger learns nothing.
+ * Mail to this member, from an allowed sender, whose domain vouches for it
+ * (DMARC).
  */
-function accepted(message: Message): boolean {
+function accept(message: Message) {
   const raw = message.raw as {
     cc?: string[];
     headers?: Record<string, string>;
@@ -58,50 +60,25 @@ function accepted(message: Message): boolean {
   };
   const sender = message.author.userId;
   const recipients = [...(raw.to ?? []), ...(raw.cc ?? [])].map(bareAddress);
-  const ok =
-    setup !== undefined &&
-    recipients.includes(setup.address) &&
-    isAllowedSender(sender) &&
-    passesDmarc(raw.headers, sender);
-  if (!ok) {
-    console.warn(`[lopsi] dropped email for ${MEMBER_ID}`, {
-      allowed: isAllowedSender(sender),
-      dmarc: passesDmarc(raw.headers, sender),
-      to: recipients,
-    });
-  }
-  return ok;
+  const allowed = isAllowedSender(sender);
+  const dmarc = passesDmarc(raw.headers, sender);
+  return {
+    ok:
+      setup !== undefined &&
+      recipients.includes(setup.address) &&
+      allowed &&
+      dmarc,
+    why: { allowed, dmarc, member: MEMBER_ID, to: recipients },
+  };
 }
 
-/** The sender runs the turn as themselves, so sign-ins and approvals reach them alone. */
-function deliver(thread: Thread, message: Message) {
-  return send(messageContentOf(message), {
-    auth: {
-      attributes: {
-        email: message.author.userId,
-        ...(message.author.fullName ? { name: message.author.fullName } : {}),
-      },
-      authenticator: "resend:email",
-      principalId: message.author.userId,
-      principalType: "user",
-    },
-    idempotencyKey: message.id,
-    thread,
-  });
-}
-
-bot.onNewMention(async (thread, message) => {
-  if (!accepted(message)) {
-    return;
-  }
-  await thread.subscribe();
-  await deliver(thread, message);
-});
-
-bot.onSubscribedMessage(async (thread, message) => {
-  if (accepted(message)) {
-    await deliver(thread, message);
-  }
+guardChannel({
+  accept,
+  authenticator: "resend:email",
+  bot,
+  channel: "resend",
+  enabled: setup !== undefined,
+  send,
 });
 
 export default channel;

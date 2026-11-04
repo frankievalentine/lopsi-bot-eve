@@ -12,6 +12,8 @@ import { type AgentInfoResult, Client } from "eve/client";
 
 /** What the settings page shows for one crew member. Serializable. */
 export interface MemberSetup {
+  /** Channels besides the web chat (`resend`, `sendblue`…), by name. */
+  readonly channels: readonly string[];
   readonly connections: readonly {
     readonly approval: boolean;
     readonly name: string;
@@ -34,9 +36,15 @@ export type MemberSetupResult =
   | { readonly ok: true; readonly setup: MemberSetup }
   | { readonly ok: false; readonly error: string };
 
+/** The built-in channels every member has: the web chat and eve's home route. */
+const BUILT_IN_CHANNELS = new Set(["eve", "home"]);
+
 function summarize(info: AgentInfoResult): MemberSetup {
   const { model } = info.agent;
   return {
+    channels: [
+      ...new Set(info.channels.routes.map((route) => route.name)),
+    ].filter((name) => !BUILT_IN_CHANNELS.has(name)),
     connections: info.connections.map((connection) => ({
       approval: connection.hasApproval,
       name: connection.connectionName,

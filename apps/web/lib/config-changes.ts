@@ -37,12 +37,15 @@ const GENERATED = "apps/web/lib/crew.generated.ts";
 /** The crew member new ones are copied from: its channel (access modes) and connections. */
 const TEMPLATE_MEMBER = "lopsi";
 /**
- * What a new member copies from the template member: its channel (access modes
- * and the chat owner check), connections, hooks (the chat list), and hardening
+ * What a new member copies from the template member: its web and email
+ * channels (access modes, the chat owner check), connections, hooks (the chat list), and hardening
  * (session budget, sandbox network policy, web_fetch approval).
  */
 const TEMPLATE_PATHS = [
-  "agent/channels/",
+  // Only the channels every member has; a provider channel (Sendblue, …)
+  // belongs to the one member set up to answer it.
+  "agent/channels/eve.ts",
+  "agent/channels/resend.ts",
   "agent/connections/",
   "agent/hooks/",
   "agent/tools/",

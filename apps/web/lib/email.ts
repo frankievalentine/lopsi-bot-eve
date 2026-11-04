@@ -11,34 +11,28 @@
  * @packageDocumentation
  */
 
-import { memberAddress, webhookSecretVariable } from "./email-core.mjs";
+import {
+  isConfigured,
+  memberAddress,
+  redisStateUrl,
+  webhookSecretVariable,
+} from "./channel-core.mjs";
 
-/** Where thread state lives: the Upstash Redis URL the Marketplace integration sets. */
-function redisUrl(): string | undefined {
-  return (process.env.REDIS_URL || process.env.KV_URL)?.trim() || undefined;
-}
-
-/** What a member needs to answer email, or `undefined` while email is off for it. */
-export function emailSetup(memberId: string):
-  | {
-      readonly address: string;
-      readonly apiKey: string;
-      readonly redisUrl: string;
-      readonly webhookSecret: string;
-    }
-  | undefined {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  const domain = process.env.LOPSI_EMAIL_DOMAIN?.trim();
-  const webhookSecret = process.env[webhookSecretVariable(memberId)]?.trim();
-  const redis = redisUrl();
-  if (!(apiKey && domain && webhookSecret && redis)) {
+/** A member's email address while email is set up for it; `undefined` while it's off. */
+export function emailSetup(
+  memberId: string
+): { readonly address: string } | undefined {
+  const secret = webhookSecretVariable(memberId);
+  if (
+    !(
+      isConfigured(["RESEND_API_KEY", "LOPSI_EMAIL_DOMAIN", secret]) &&
+      redisStateUrl()
+    )
+  ) {
     return;
   }
   return {
-    address: memberAddress(memberId, domain),
-    apiKey,
-    redisUrl: redis,
-    webhookSecret,
+    address: memberAddress(memberId, process.env.LOPSI_EMAIL_DOMAIN ?? ""),
   };
 }
 

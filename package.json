@@ -21,6 +21,7 @@
     "eval": "eve eval --agent lopsi",
     "fix": "ultracite fix",
     "knip": "knip",
+    "setup:channel": "node scripts/setup-channel.mjs",
     "setup:connector": "node scripts/setup-connector.mjs",
     "setup:email": "node scripts/setup-email.mjs",
     "setup:sign-in": "node scripts/setup-sign-in.mjs",

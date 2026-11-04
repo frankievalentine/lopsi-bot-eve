@@ -3,6 +3,8 @@
 import { headers } from "next/headers";
 import { type AccessMode, accessMode } from "@/lib/access";
 import { type MemberSetupResult, memberSetup } from "@/lib/agent-info";
+import { isConfigured } from "@/lib/channel-core.mjs";
+import channelCatalog from "@/lib/channels.json";
 import { connectorCatalog } from "@/lib/connectors";
 import { CREW } from "@/lib/crew.generated";
 import { currentAccount } from "@/lib/current-account";
@@ -20,6 +22,12 @@ export interface SettingsStatus {
     readonly id: string;
     readonly name: string;
     readonly variable: string;
+  }[];
+  /** The messaging channels in apps/web/lib/channels.json, and whether each is set up. */
+  readonly channels: readonly {
+    readonly configured: boolean;
+    readonly id: string;
+    readonly name: string;
   }[];
   /** Each member's email address, for members that answer email. */
   readonly email: Readonly<Record<string, string>>;
@@ -76,6 +84,11 @@ export async function loadSettings(): Promise<
       access: accessMode(),
       budgetUsd: sessionBudgetUsd(),
       catalog: connectorCatalog(),
+      channels: channelCatalog.map((entry) => ({
+        configured: isConfigured(entry.env.map((variable) => variable.name)),
+        id: entry.id,
+        name: entry.name,
+      })),
       email: Object.fromEntries(
         CREW.flatMap((member) => {
           const address = emailSetup(member.id)?.address;
