@@ -5,6 +5,12 @@ import {
   type ConfiguredConnector,
   configuredConnectors,
 } from "../../../../apps/web/lib/connectors.js";
+import crew from "../../crew.json" with { type: "json" };
+
+/** The connectors this member may use (crew.json `connectors`); absent is all of them. */
+const allowed: readonly string[] | undefined = (
+  crew as { connectors?: string[] }
+).connectors;
 
 /**
  * Read-only tools run; everything else waits for a person, including tools the
@@ -41,7 +47,9 @@ function approvalFor(connector: ConfiguredConnector) {
  * and so one grant.
  */
 export default defineDynamic(() => {
-  const connectors = configuredConnectors();
+  const connectors = configuredConnectors().filter(
+    (connector) => allowed === undefined || allowed.includes(connector.id)
+  );
   if (connectors.length === 0) {
     return null;
   }

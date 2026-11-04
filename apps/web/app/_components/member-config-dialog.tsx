@@ -19,11 +19,20 @@ import type { MemberConfig } from "@/lib/config-changes";
 import type { PullRequest } from "@/lib/github";
 import { cn } from "@/lib/utils";
 import {
+  connectorChoices,
   loadMemberConfig,
   modelOptions,
   proposeMemberEdit,
   proposeNewMember,
 } from "./config-actions";
+import {
+  AccessFields,
+  type AccessForm,
+  accessFormOf,
+  accessOf,
+  type ConnectorChoice,
+  NEW_ACCESS,
+} from "./member-access-fields";
 import {
   FallbackPicker,
   type ModelOption,
@@ -56,6 +65,7 @@ type Mode =
   | { readonly kind: "new" };
 
 interface Form {
+  readonly access: AccessForm;
   readonly fallbacks: readonly string[];
   readonly id: string;
   readonly instructions: string;
@@ -69,6 +79,7 @@ interface Form {
 }
 
 const EMPTY_FORM: Form = {
+  access: NEW_ACCESS,
   fallbacks: [],
   id: "",
   instructions: NEW_INSTRUCTIONS,
@@ -83,6 +94,7 @@ const EMPTY_FORM: Form = {
 
 function formOf(config: MemberConfig): Form {
   return {
+    access: accessFormOf(config),
     fallbacks: config.model?.fallbacks ?? [],
     id: "",
     instructions: config.instructions ?? "",
@@ -105,8 +117,12 @@ function configOf(form: Form, from: MemberConfig | undefined): MemberConfig {
   const order = form.order.trim() === "" ? undefined : Number(form.order);
   const canEditModel = from === undefined || from.model !== undefined;
   const fallbacks = form.fallbacks.filter((id) => id !== form.model.trim());
+  const { access, connectors } = accessOf(form.access);
   return {
+    // A new member gets the template member's tools and network.
+    ...(from === undefined ? {} : { access }),
     crew: {
+      ...(connectors === undefined ? {} : { connectors }),
       mascot: form.mascot,
       name: form.name.trim(),
       ...(form.role.trim() ? { role: form.role.trim() } : {}),
@@ -135,6 +151,7 @@ function useMemberConfig(open: boolean, memberId: string | undefined) {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [models, setModels] = useState<readonly ModelOption[]>([]);
+  const [choices, setChoices] = useState<readonly ConnectorChoice[]>([]);
 
   useEffect(() => {
     if (!open) {
@@ -146,6 +163,9 @@ function useMemberConfig(open: boolean, memberId: string | undefined) {
     setForm(EMPTY_FORM);
     modelOptions()
       .then((list) => current && setModels(list))
+      .catch(() => undefined);
+    connectorChoices()
+      .then((list) => current && setChoices(list))
       .catch(() => undefined);
     if (memberId === undefined) {
       return;
@@ -170,7 +190,7 @@ function useMemberConfig(open: boolean, memberId: string | undefined) {
     };
   }, [open, memberId]);
 
-  return { form, from, loadError, loading, models, setForm };
+  return { choices, form, from, loadError, loading, models, setForm };
 }
 
 /** Opens the pull request for the form: a new member, or an edit from `from`. */
@@ -194,6 +214,7 @@ function requestChange(
 type Setter = <K extends keyof Form>(key: K) => (value: Form[K]) => void;
 
 interface FieldsProps {
+  readonly choices: readonly ConnectorChoice[];
   readonly editing: boolean;
   readonly form: Form;
   readonly from: MemberConfig | undefined;
@@ -219,10 +240,8 @@ export function MemberConfigDialog({
   readonly open: boolean;
 }) {
   const memberId = mode.kind === "edit" ? mode.memberId : undefined;
-  const { form, from, loadError, loading, models, setForm } = useMemberConfig(
-    open,
-    memberId
-  );
+  const { choices, form, from, loadError, loading, models, setForm } =
+    useMemberConfig(open, memberId);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [pull, setPull] = useState<PullRequest | null>(null);
@@ -284,6 +303,7 @@ export function MemberConfigDialog({
             ) : null}
             {ready ? (
               <MemberFields
+                choices={choices}
                 editing={editing}
                 form={form}
                 from={from}
@@ -323,7 +343,14 @@ export function MemberConfigDialog({
   );
 }
 
-function MemberFields({ editing, form, from, models, set }: FieldsProps) {
+function MemberFields({
+  choices,
+  editing,
+  form,
+  from,
+  models,
+  set,
+}: FieldsProps) {
   return (
     <>
       {editing ? null : (
@@ -419,13 +446,26 @@ function MemberFields({ editing, form, from, models, set }: FieldsProps) {
         </label>
       </div>
 
+      <AccessFields
+        choices={choices}
+        editing={editing}
+        onChange={set("access")}
+        value={form.access}
+      />
+
       <InstructionsField editing={editing} form={form} from={from} set={set} />
     </>
   );
 }
 
 /** Model and reasoning, unless agent.ts was edited by hand. */
-function ModelFields({ editing, form, from, models, set }: FieldsProps) {
+function ModelFields({
+  editing,
+  form,
+  from,
+  models,
+  set,
+}: Omit<FieldsProps, "choices">) {
   if (editing && from?.model === undefined) {
     return (
       <p className="bg-muted/40 text-muted-foreground rounded-lg border px-3 py-2.5 text-sm">
@@ -473,7 +513,7 @@ function InstructionsField({
   form,
   from,
   set,
-}: Omit<FieldsProps, "models">) {
+}: Omit<FieldsProps, "choices" | "models">) {
   if (editing && from?.instructions === undefined) {
     return (
       <p className="bg-muted/40 text-muted-foreground rounded-lg border px-3 py-2.5 text-sm">

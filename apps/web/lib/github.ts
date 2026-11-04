@@ -174,7 +174,8 @@ export async function openPullRequest(
   change: {
     readonly body: string;
     readonly branch: string;
-    readonly files: Readonly<Record<string, string>>;
+    /** New contents by path; `null` deletes the file. */
+    readonly files: Readonly<Record<string, string | null>>;
     readonly title: string;
   }
 ): Promise<PullRequest> {
@@ -184,12 +185,11 @@ export async function openPullRequest(
   const tree = await github<{ sha: string }>(`${repoPath(target)}/git/trees`, {
     body: {
       base_tree: baseCommit.tree.sha,
-      tree: Object.entries(change.files).map(([path, content]) => ({
-        content,
-        mode: "100644",
-        path,
-        type: "blob",
-      })),
+      tree: Object.entries(change.files).map(([path, content]) =>
+        content === null
+          ? { mode: "100644", path, sha: null, type: "blob" }
+          : { content, mode: "100644", path, type: "blob" }
+      ),
     },
     method: "POST",
   });

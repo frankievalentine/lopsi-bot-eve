@@ -45,6 +45,16 @@
       "description": "Position in the crew list, lowest first; members without one follow, by directory name.",
       "type": "integer",
       "minimum": 0
+    },
+    "connectors": {
+      "type": "array",
+      "description": "Which connectors (ids in apps/web/lib/connectors.json) this crew member may use. Leave it out to allow all of them.",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]{0,30}$"
+      },
+      "maxItems": 30,
+      "uniqueItems": true
     }
   }
 }

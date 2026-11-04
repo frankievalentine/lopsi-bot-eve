@@ -71,7 +71,7 @@ Each chat has its own sandbox. The **Computer** button in the chat header shows 
 
 ## Changing the crew from the dashboard
 
-Agents are code, so the dashboard never changes a running agent. **Edit** in a chat's menu (name, role, mascot, suggestions, order, model and instructions) and **New crew member** in the sidebar each open a pull request against the branch this deployment was built from. Merging it deploys the change; **Pending changes** lists the open ones.
+Agents are code, so the dashboard never changes a running agent. **Edit** in a chat's menu (name, role, mascot, suggestions, order, model and instructions, plus which connectors the member may use, its built-in tools (shell, web search, web pages and how often they ask), and which domains its sandbox may reach) and **New crew member** in the sidebar each open a pull request against the branch this deployment was built from. Merging it deploys the change; **Pending changes** lists the open ones.
 
 ```sh
 pnpm setup:connector github
