@@ -40,6 +40,12 @@ Don't use `eve add channel/web` for this: its files would replace the ones here 
 
 In production mode a chat belongs to the person who started it: a teammate with its link can't read it, add to it, or answer its approvals. eve doesn't do this on its own; the agent records each session's owner when its first turn starts and checks it on every request. In starter mode everyone shares one identity, so everyone with the password shares every chat. The list of chats is kept in each browser, per person; it doesn't follow you to another device.
 
+### What the crew can reach
+
+- Each chat's sandbox (its shell and files) has no network access on Vercel, so nothing the crew reads can make it send data anywhere from the shell. Locally eve uses just-bash, which can't restrict the network.
+- `web_fetch` runs outside the sandbox, so it asks before every URL: a link built from chat or connector data could otherwise carry that data away.
+- A chat stops and asks to continue after it spends `LOPSI_SESSION_BUDGET_USD` (default $1) on model calls since the last Continue. With a model that reports no cost, eve's token cap applies instead.
+
 ### Neither
 
 A deployment with neither mode configured accepts no browser traffic, and the sign-in page says which variable to set. Locally, with neither configured, the chat opens without signing in.

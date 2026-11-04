@@ -13,6 +13,7 @@
 import {
   type AgentModel,
   readAgentModel,
+  usesSessionLimits,
   writeAgentModel,
 } from "./agent-model";
 import {
@@ -29,7 +30,18 @@ type CrewData = ReturnType<typeof CrewSchema.parse>;
 const GENERATED = "apps/web/lib/crew.generated.ts";
 /** The crew member new ones are copied from: its channel (access modes) and connections. */
 const TEMPLATE_MEMBER = "lopsi";
-const TEMPLATE_DIRECTORIES = ["agent/channels/", "agent/connections/"];
+/**
+ * What a new member copies from the template member: its channel (access modes
+ * and the chat owner check), connections, and hardening (session budget,
+ * sandbox network policy, web_fetch approval).
+ */
+const TEMPLATE_PATHS = [
+  "agent/channels/",
+  "agent/connections/",
+  "agent/tools/",
+  "agent/limits.ts",
+  "agent/sandbox.ts",
+];
 
 const MEMBER_FILE = /^agents\/(?<id>[^/]+)\/agent\//u;
 
@@ -154,7 +166,10 @@ export async function memberEditFiles(
         "This crew member's agent.ts was edited by hand; change its model there."
       );
     }
-    files[agentPath(id)] = writeAgentModel(to.model);
+    const source = (await snapshot.readFile(agentPath(id))) ?? "";
+    files[agentPath(id)] = writeAgentModel(to.model, {
+      limits: usesSessionLimits(source),
+    });
   }
   return await changedOnly(snapshot, files);
 }
@@ -195,8 +210,8 @@ export async function newMemberFiles(
     throw new ConfigConflictError(`agents/${id} already exists.`);
   }
   const templateFiles = [...snapshot.paths].filter((path) =>
-    TEMPLATE_DIRECTORIES.some((directory) =>
-      path.startsWith(`agents/${TEMPLATE_MEMBER}/${directory}`)
+    TEMPLATE_PATHS.some((prefix) =>
+      path.startsWith(`agents/${TEMPLATE_MEMBER}/${prefix}`)
     )
   );
   if (templateFiles.length === 0) {
@@ -206,7 +221,9 @@ export async function newMemberFiles(
   }
 
   const files: Record<string, string> = {
-    [agentPath(id)]: writeAgentModel(config.model),
+    [agentPath(id)]: writeAgentModel(config.model, {
+      limits: snapshot.paths.has(`agents/${TEMPLATE_MEMBER}/agent/limits.ts`),
+    }),
     [crewPath(id)]: serializeCrewJson(config.crew),
     [GENERATED]: await regeneratedCrew(snapshot, { [id]: config.crew }),
     [instructionsPath(id)]: config.instructions.endsWith("\n")
