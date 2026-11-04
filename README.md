@@ -67,7 +67,13 @@ Each chat has its own sandbox. The **Computer** button in the chat header shows 
 
 ## Settings
 
-**Settings** in the sidebar shows how the deployment is set up (access mode, where chat history is kept, the per-chat budget, where pull requests go, which connectors are set up and the command for the rest, links to AI Gateway and Agent Runs on Vercel) and each crew member's effective setup from its deployed agent: model, tools and which ask first, connections, skills, schedules, subagents, hooks and diagnostics. Changes open the dashboard's own dialogs: Connections, Pending changes, and a member's Edit.
+**Settings** in the sidebar (or the account menu on a phone) opens a dialog with three tabs:
+
+- **Workspace**: the access mode, where chat history is kept, email, the per-chat budget, where pull requests go, and links to AI Gateway, Agent Runs and Vercel Connect.
+- **Connectors**: which are set up, and the command for the rest.
+- **Crew**: each crew member's effective setup from its deployed agent (model, tools and which ask first, connections, skills, schedules, subagents, hooks, sandbox, email address).
+
+Changes open the dashboard's own dialogs: Connections, Pending changes, and a member's Edit.
 
 ## Changing the crew from the dashboard
 

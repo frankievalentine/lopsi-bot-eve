@@ -12,18 +12,10 @@ import { faviconFor, useFavicon } from "@/lib/favicon";
 import { useIsPhone } from "@/lib/use-phone";
 import { signOutOfPassword } from "../login/actions";
 import { type Account, ownerOf } from "./account";
-import { ConnectionsDialog, type ConnectorSummary } from "./connections-dialog";
+import type { ConnectorSummary } from "./connections-dialog";
 import { CrewChat } from "./crew-chat";
 import { CrewSidebar, MobileCrewList } from "./crew-list";
-import { MemberConfigDialog } from "./member-config-dialog";
-import {
-  PendingChangesDialog,
-  usePendingCount,
-} from "./pending-changes-dialog";
-
-type MemberDialogMode =
-  | { readonly kind: "edit"; readonly memberId: string }
-  | { readonly kind: "new" };
+import { useDashboardDialogs } from "./dashboard-dialogs";
 
 /**
  * The dashboard: the crew list and, when a member is selected, its chat. Ported
@@ -55,18 +47,11 @@ export function CrewApp({
   const owner = ownerOf(account);
   const history = useMergedHistory(owner, chatList);
   const [moods, setMoods] = useState<Record<string, MascotMood>>({});
-  const [connectionsOpen, setConnectionsOpen] = useState(false);
-  const [memberDialog, setMemberDialog] = useState<MemberDialogMode | null>(
-    null
-  );
-  const [pendingOpen, setPendingOpen] = useState(false);
-  const pending = usePendingCount(changes?.available === true);
-  const onPendingOpenChange = (next: boolean) => {
-    setPendingOpen(next);
-    if (!next) {
-      pending.refresh();
-    }
-  };
+  const { actions, dialogs } = useDashboardDialogs({
+    account,
+    changes,
+    connectors,
+  });
   const member = CREW.find((candidate) => candidate.id === memberId);
 
   const moodOf = (candidate: CrewMember): MascotMood =>
@@ -98,18 +83,19 @@ export function CrewApp({
     crew: CREW,
     history,
     moodOf,
+    onSettings: actions.openSettings,
     selectedId: member?.id,
     ...(onSignOut ? { onSignOut } : {}),
-    ...(connectors.length > 0
-      ? { onConnections: () => setConnectionsOpen(true) }
+    ...(actions.openConnections
+      ? { onConnections: actions.openConnections }
       : {}),
     ...(changes
       ? {
           changes: {
             ...changes,
-            onNewMember: () => setMemberDialog({ kind: "new" }),
-            onPendingChanges: () => setPendingOpen(true),
-            pendingCount: pending.count ?? 0,
+            onNewMember: actions.openNewMember ?? (() => undefined),
+            onPendingChanges: actions.openPendingChanges ?? (() => undefined),
+            pendingCount: actions.pendingCount ?? 0,
           },
         }
       : {}),
@@ -127,11 +113,8 @@ export function CrewApp({
           owner={owner}
           persist={chatList !== undefined}
           saved={savedTranscript}
-          {...(changes?.available
-            ? {
-                onEdit: () =>
-                  setMemberDialog({ kind: "edit", memberId: member.id }),
-              }
+          {...(actions.openEdit
+            ? { onEdit: () => actions.openEdit?.(member.id) }
             : {})}
           {...(phone ? { onBack: () => router.push("/") } : {})}
           {...(sessionId === undefined ? {} : { sessionId })}
@@ -139,45 +122,18 @@ export function CrewApp({
       </PromptInputProvider>
     );
 
-  const connectionsDialog = (
-    <>
-      {connectors.length > 0 ? (
-        <ConnectionsDialog
-          account={account}
-          connectors={connectors}
-          onOpenChange={setConnectionsOpen}
-          open={connectionsOpen}
-        />
-      ) : null}
-      {changes?.available ? (
-        <>
-          <MemberConfigDialog
-            mode={memberDialog ?? { kind: "new" }}
-            onOpenChange={(next) => !next && setMemberDialog(null)}
-            onPullRequest={pending.refresh}
-            open={memberDialog !== null}
-          />
-          <PendingChangesDialog
-            onOpenChange={onPendingOpenChange}
-            open={pendingOpen}
-          />
-        </>
-      ) : null}
-    </>
-  );
-
   if (phone) {
     return (
       <>
         {chat ?? <MobileCrewList {...listProps} />}
-        {connectionsDialog}
+        {dialogs}
       </>
     );
   }
 
   return (
     <div className="bg-background flex min-h-svh flex-wrap">
-      {connectionsDialog}
+      {dialogs}
       <CrewSidebar {...listProps} />
       {chat ?? (
         <main className="flex h-svh min-h-[640px] min-w-0 flex-[999_1_560px] flex-col items-center justify-center gap-2 p-8 text-center">

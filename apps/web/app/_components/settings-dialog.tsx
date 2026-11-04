@@ -1,53 +1,28 @@
 "use client";
 
 import {
-  ArrowLeftIcon,
   ExternalLinkIcon,
   GitPullRequestIcon,
   PencilIcon,
   PlugIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { type ReactNode, useState } from "react";
-import type { Account } from "@/app/_components/account";
-import {
-  ConnectionsDialog,
-  type ConnectorSummary,
-} from "@/app/_components/connections-dialog";
-import { MemberConfigDialog } from "@/app/_components/member-config-dialog";
-import {
-  PendingChangesDialog,
-  usePendingCount,
-} from "@/app/_components/pending-changes-dialog";
+import { type ReactNode, useEffect, useState } from "react";
 import { Mascot } from "@/components/mascot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AccessMode } from "@/lib/access";
 import type { MemberSetup, MemberSetupResult } from "@/lib/agent-info";
-import type { CrewMember } from "@/lib/crew.generated";
-
-export interface SettingsStatus {
-  readonly access: AccessMode;
-  readonly budgetUsd: number;
-  readonly catalog: readonly {
-    readonly configured: boolean;
-    readonly id: string;
-    readonly name: string;
-    readonly variable: string;
-  }[];
-  /** Each member's email address, for members that answer email. */
-  readonly email: Readonly<Record<string, string>>;
-  /** How many entries LOPSI_EMAIL_SENDERS has. */
-  readonly emailSenders: number;
-  /** Whether the GitHub connector and target repository are set up. */
-  readonly github: boolean;
-  /** Whether chat history and ownership are kept on the server. */
-  readonly history: boolean;
-  /** Local development: changes are made in the files, not by pull request. */
-  readonly local: boolean;
-  /** `owner/repo@branch` that pull requests go to. */
-  readonly repository?: string;
-}
+import { CREW, type CrewMember } from "@/lib/crew.generated";
+import { loadSettings, type SettingsStatus } from "./settings-actions";
 
 const ACCESS: Record<AccessMode, string> = {
   incomplete:
@@ -90,13 +65,16 @@ function Section({
   readonly action?: ReactNode;
   readonly children: ReactNode;
   readonly description?: string;
-  readonly title: string;
+  /** A heading; omit it where the tab already names the section. */
+  readonly title?: string;
 }) {
   return (
     <section className="space-y-3">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <h2 className="text-[15px] font-semibold">{title}</h2>
+          {title ? (
+            <h2 className="text-[15px] font-semibold">{title}</h2>
+          ) : null}
           {description ? (
             <p className="text-muted-foreground text-sm">{description}</p>
           ) : null}
@@ -190,8 +168,11 @@ function MemberSection({
   email,
   member,
   onEdit,
+  onOpenChat,
   result,
 }: {
+  /** Closes Settings as the member's chat opens. */
+  readonly onOpenChat: () => void;
   /** The member's address, when it answers email. */
   readonly email: string | undefined;
   readonly member: CrewMember;
@@ -216,6 +197,7 @@ function MemberSection({
         <Link
           className="text-sm underline-offset-4 hover:underline"
           href={`/c/${encodeURIComponent(member.id)}`}
+          onClick={onOpenChat}
         >
           Open chat
         </Link>
@@ -263,7 +245,6 @@ function ConnectorsSection({
         ) : undefined
       }
       description="Services the crew can use. Set one up with the command shown; people connect their own accounts in a chat."
-      title="Connectors"
     >
       {catalog.map((entry) => (
         <Row key={entry.id} label={entry.name}>
@@ -322,7 +303,7 @@ function WorkspaceSection({
   readonly status: SettingsStatus;
 }) {
   return (
-    <Section title="Workspace">
+    <Section>
       <Row label="Access">{ACCESS[status.access]}</Row>
       <Row label="Chat history">
         {status.history
@@ -366,99 +347,117 @@ function WorkspaceSection({
   );
 }
 
-/**
- * The settings page: workspace status and each crew member's effective setup.
- * Changes open the dashboard's own dialogs.
- */
-export function SettingsView({
-  account,
-  crew,
-  features,
-  setups,
-  status,
-}: {
-  readonly account: Account;
-  readonly crew: readonly CrewMember[];
-  readonly features: {
-    readonly changes?: {
-      readonly available: boolean;
-      readonly reason?: string;
+type Loaded = Awaited<ReturnType<typeof loadSettings>>;
+
+/** Loads the settings each time the dialog opens. */
+function useSettings(open: boolean): Loaded | null {
+  const [loaded, setLoaded] = useState<Loaded | null>(null);
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    let current = true;
+    setLoaded(null);
+    loadSettings()
+      .then((result) => current && setLoaded(result))
+      .catch(
+        () =>
+          current && setLoaded({ error: "Couldn't load settings.", ok: false })
+      );
+    return () => {
+      current = false;
     };
-    readonly connectors: readonly ConnectorSummary[];
-  };
-  readonly setups: Readonly<Record<string, MemberSetupResult>>;
-  readonly status: SettingsStatus;
+  }, [open]);
+  return loaded;
+}
+
+/**
+ * Settings: how this deployment is set up (Workspace, Connectors) and each crew
+ * member's effective setup (Crew), read-only. Changes open the dashboard's own
+ * dialogs, through these callbacks; Settings closes first.
+ */
+export function SettingsDialog({
+  onConnections,
+  onEdit,
+  onOpenChange,
+  onPendingChanges,
+  open,
+  pendingCount,
+}: {
+  /** Opens Connections; absent when no connector is set up. */
+  readonly onConnections?: (() => void) | undefined;
+  /** Opens a member's Edit; absent where changes aren't possible. */
+  readonly onEdit?: ((memberId: string) => void) | undefined;
+  readonly onOpenChange: (open: boolean) => void;
+  /** Opens Pending changes; absent where changes aren't possible. */
+  readonly onPendingChanges?: (() => void) | undefined;
+  readonly open: boolean;
+  readonly pendingCount: number | null;
 }) {
-  const [editing, setEditing] = useState<string | null>(null);
-  const [connectionsOpen, setConnectionsOpen] = useState(false);
-  const [pendingOpen, setPendingOpen] = useState(false);
-  const canChange = features.changes?.available === true;
-  const pending = usePendingCount(canChange);
-  const hasConnectors = features.connectors.length > 0;
+  const loaded = useSettings(open);
+  const then = (action: (() => void) | undefined) =>
+    action
+      ? () => {
+          onOpenChange(false);
+          action();
+        }
+      : undefined;
 
   return (
-    <main className="mx-auto w-full max-w-3xl space-y-8 px-5 py-8">
-      <header className="flex items-center gap-3">
-        <Button
-          aria-label="Back to crew"
-          nativeButton={false}
-          render={<Link href="/" />}
-          size="icon-sm"
-          variant="ghost"
-        >
-          <ArrowLeftIcon className="size-4" />
-        </Button>
-        <h1 className="text-lg font-semibold">Settings</h1>
-      </header>
-
-      <WorkspaceSection
-        onPending={canChange ? () => setPendingOpen(true) : undefined}
-        pendingCount={pending.count}
-        status={status}
-      />
-      <ConnectorsSection
-        catalog={status.catalog}
-        onConnections={
-          hasConnectors ? () => setConnectionsOpen(true) : undefined
-        }
-      />
-      {crew.map((member) => (
-        <MemberSection
-          email={status.email[member.id]}
-          key={member.id}
-          member={member}
-          onEdit={canChange ? () => setEditing(member.id) : undefined}
-          result={setups[member.id]}
-        />
-      ))}
-
-      {hasConnectors ? (
-        <ConnectionsDialog
-          account={account}
-          connectors={features.connectors}
-          onOpenChange={setConnectionsOpen}
-          open={connectionsOpen}
-        />
-      ) : null}
-      {canChange ? (
-        <>
-          <MemberConfigDialog
-            mode={{ kind: "edit", memberId: editing ?? crew[0]?.id ?? "" }}
-            onOpenChange={(next) => !next && setEditing(null)}
-            onPullRequest={pending.refresh}
-            open={editing !== null}
-          />
-          <PendingChangesDialog
-            onOpenChange={(next) => {
-              setPendingOpen(next);
-              if (!next) {
-                pending.refresh();
-              }
-            }}
-            open={pendingOpen}
-          />
-        </>
-      ) : null}
-    </main>
+    <Dialog onOpenChange={onOpenChange} open={open}>
+      <DialogContent className="flex max-h-[85svh] flex-col gap-4 sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Settings</DialogTitle>
+          <DialogDescription>
+            How this deployment and its crew are set up.
+          </DialogDescription>
+        </DialogHeader>
+        {loaded === null ? (
+          <p className="text-muted-foreground text-sm">Loading…</p>
+        ) : null}
+        {loaded?.ok === false ? (
+          <p className="text-destructive text-sm" role="alert">
+            {loaded.error}
+          </p>
+        ) : null}
+        {loaded?.ok ? (
+          <Tabs className="min-h-0 flex-1 gap-3" defaultValue="workspace">
+            <TabsList>
+              <TabsTrigger value="workspace">Workspace</TabsTrigger>
+              <TabsTrigger value="connectors">Connectors</TabsTrigger>
+              <TabsTrigger value="crew">Crew</TabsTrigger>
+            </TabsList>
+            <TabsContent className="min-h-0 overflow-auto" value="workspace">
+              <WorkspaceSection
+                onPending={then(onPendingChanges)}
+                pendingCount={pendingCount}
+                status={loaded.status}
+              />
+            </TabsContent>
+            <TabsContent className="min-h-0 overflow-auto" value="connectors">
+              <ConnectorsSection
+                catalog={loaded.status.catalog}
+                onConnections={then(onConnections)}
+              />
+            </TabsContent>
+            <TabsContent
+              className="min-h-0 space-y-6 overflow-auto"
+              value="crew"
+            >
+              {CREW.map((member) => (
+                <MemberSection
+                  email={loaded.status.email[member.id]}
+                  key={member.id}
+                  member={member}
+                  onEdit={onEdit ? then(() => onEdit(member.id)) : undefined}
+                  onOpenChat={() => onOpenChange(false)}
+                  result={loaded.setups[member.id]}
+                />
+              ))}
+            </TabsContent>
+          </Tabs>
+        ) : null}
+      </DialogContent>
+    </Dialog>
   );
 }
