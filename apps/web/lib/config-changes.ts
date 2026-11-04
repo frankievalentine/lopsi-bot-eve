@@ -156,7 +156,23 @@ export async function memberEditFiles(
     }
     files[agentPath(id)] = writeAgentModel(to.model);
   }
-  return files;
+  return await changedOnly(snapshot, files);
+}
+
+/** Drops files whose new content is already on the branch, so a pull request lists only real changes. */
+async function changedOnly(
+  snapshot: BranchSnapshot,
+  files: Record<string, string>
+): Promise<Record<string, string>> {
+  const entries = await Promise.all(
+    Object.entries(files).map(
+      async ([path, text]) =>
+        [path, text, (await snapshot.readFile(path)) === text] as const
+    )
+  );
+  return Object.fromEntries(
+    entries.filter(([, , same]) => !same).map(([path, text]) => [path, text])
+  );
 }
 
 /**
