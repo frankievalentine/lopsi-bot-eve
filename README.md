@@ -74,10 +74,12 @@ This creates a GitHub App through Vercel Connect (`GITHUB_CONNECTOR`). Install i
 
 ## Connectors
 
-The crew can use Linear, Notion and Sentry through their MCP servers and [Vercel Connect](https://vercel.com/docs/connect). None is on until you set it up, so the agent never reaches for a service it can't use:
+The crew can use any service with an MCP server through [Vercel Connect](https://vercel.com/docs/connect). Linear, Notion and Sentry are listed already. None is on until you set it up, so the agent never reaches for a service it can't use:
 
 ```sh
-pnpm setup:connector linear   # or notion, sentry
+pnpm setup:connector linear                      # listed in connectors.json
+pnpm setup:connector asana                       # any Vercel Connect service with MCP
+pnpm setup:connector https://mcp.example.com/mcp --name Example --description "What it does"
 eve deploy
 ```
 
@@ -85,7 +87,10 @@ The script creates a Vercel Connect connector for the service, attaches it to th
 
 - Tools the service marks read-only run straight away; every other call waits for your approval.
 - **Connections** in the sidebar shows which services you've connected, and disconnects one by revoking your grant at Vercel Connect.
-- To add another service, add an entry to `apps/web/lib/connectors.json` (its MCP URL and a variable name).
+- A service that isn't listed yet is added to `apps/web/lib/connectors.json` with the MCP URL its connector reports; commit that file. Find services with `vercel connect discover <query>`.
+- A connector you created in the Vercel dashboard is reused when it's for the same MCP server.
+- Some services need your own OAuth client: pass its credentials with `--data <file>` (`vercel connect create <service> --help` says which).
+- Services without an MCP server (API keys or OAuth to an API only) can't become crew tools this way; they need a tool written for their API.
 
 ## Tech stack
 
