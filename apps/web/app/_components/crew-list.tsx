@@ -6,6 +6,7 @@ import {
   PlugIcon,
   PlusIcon,
   SearchIcon,
+  SettingsIcon,
   SquarePenIcon,
   XIcon,
 } from "lucide-react";
@@ -212,33 +213,38 @@ export function CrewSidebar({
         ) : null}
       </nav>
 
-      {onConnections || changes ? (
-        <div className="border-sidebar-border flex flex-col gap-0.5 border-t px-3 py-2.5">
-          {changes ? (
-            <button
-              className="hover:bg-sidebar-accent flex w-full items-center gap-2.5 rounded-md p-2 text-left text-sm transition-colors disabled:opacity-50"
-              disabled={!changes.available}
-              onClick={changes.onPendingChanges}
-              title={changes.available ? undefined : changes.reason}
-              type="button"
-            >
-              <GitPullRequestIcon className="size-4" />
-              Pending changes
-              <PendingBadge count={changes.pendingCount} />
-            </button>
-          ) : null}
-          {onConnections ? (
-            <button
-              className="hover:bg-sidebar-accent flex w-full items-center gap-2.5 rounded-md p-2 text-left text-sm transition-colors"
-              onClick={onConnections}
-              type="button"
-            >
-              <PlugIcon className="size-4" />
-              Connections
-            </button>
-          ) : null}
-        </div>
-      ) : null}
+      <div className="border-sidebar-border flex flex-col gap-0.5 border-t px-3 py-2.5">
+        {changes ? (
+          <button
+            className="hover:bg-sidebar-accent flex w-full items-center gap-2.5 rounded-md p-2 text-left text-sm transition-colors disabled:opacity-50"
+            disabled={!changes.available}
+            onClick={changes.onPendingChanges}
+            title={changes.available ? undefined : changes.reason}
+            type="button"
+          >
+            <GitPullRequestIcon className="size-4" />
+            Pending changes
+            <PendingBadge count={changes.pendingCount} />
+          </button>
+        ) : null}
+        {onConnections ? (
+          <button
+            className="hover:bg-sidebar-accent flex w-full items-center gap-2.5 rounded-md p-2 text-left text-sm transition-colors"
+            onClick={onConnections}
+            type="button"
+          >
+            <PlugIcon className="size-4" />
+            Connections
+          </button>
+        ) : null}
+        <Link
+          className="hover:bg-sidebar-accent flex w-full items-center gap-2.5 rounded-md p-2 text-left text-sm transition-colors"
+          href="/settings"
+        >
+          <SettingsIcon className="size-4" />
+          Settings
+        </Link>
+      </div>
 
       <div className="border-sidebar-border flex items-center gap-2.5 border-t px-5 py-3">
         <Avatar account={account} initials={person.initials} size="sm" />
@@ -306,6 +312,9 @@ export function MobileCrewList({
                   Connections
                 </DropdownMenuItem>
               ) : null}
+              <DropdownMenuItem render={<Link href="/settings" />}>
+                Settings
+              </DropdownMenuItem>
               {onSignOut ? (
                 <DropdownMenuItem onClick={onSignOut}>
                   Sign out

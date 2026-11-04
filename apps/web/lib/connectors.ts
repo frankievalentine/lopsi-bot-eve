@@ -28,6 +28,21 @@ export interface ConfiguredConnector extends Connector {
   readonly uid: string;
 }
 
+/** Every service in connectors.json, and whether this deployment has set it up. */
+export function connectorCatalog(): readonly {
+  readonly configured: boolean;
+  readonly id: string;
+  readonly name: string;
+  readonly variable: string;
+}[] {
+  return CONNECTORS.map(({ id, name, variable }) => ({
+    configured: Boolean(process.env[variable]?.trim()),
+    id,
+    name,
+    variable,
+  }));
+}
+
 /** The connectors set up for this deployment. */
 export function configuredConnectors(): readonly ConfiguredConnector[] {
   return CONNECTORS.flatMap((connector) => {

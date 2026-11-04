@@ -65,6 +65,10 @@ To add one, create the directory (start from `agents/lopsi/`), then run `pnpm cr
 
 Each chat has its own sandbox. The **Computer** button in the chat header shows what it did: the shell commands it ran, with their output and exit codes, and the files the crew member wrote or read. In production mode the agent also snapshots the workspace after each turn that used the shell or wrote a file (small text files' content, every file's name and size, in the private Blob store), so files the shell made on its own show too.
 
+## Settings
+
+**Settings** in the sidebar shows how the deployment is set up (access mode, where chat history is kept, the per-chat budget, where pull requests go, which connectors are set up and the command for the rest, links to AI Gateway and Agent Runs on Vercel) and each crew member's effective setup from its deployed agent: model, tools and which ask first, connections, skills, schedules, subagents, hooks and diagnostics. Changes open the dashboard's own dialogs: Connections, Pending changes, and a member's Edit.
+
 ## Changing the crew from the dashboard
 
 Agents are code, so the dashboard never changes a running agent. **Edit** in a chat's menu (name, role, mascot, suggestions, order, model and instructions) and **New crew member** in the sidebar each open a pull request against the branch this deployment was built from. Merging it deploys the change; **Pending changes** lists the open ones.
