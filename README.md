@@ -105,6 +105,21 @@ The script creates a Vercel Connect connector for the service, attaches it to th
 - Some services need your own OAuth client: pass its credentials with `--data <file>` (`vercel connect create <service> --help` says which).
 - Services without an MCP server (API keys or OAuth to an API only) can't become crew tools this way; they need a tool written for their API.
 
+## Email
+
+The crew can send and receive email through [Resend](https://resend.com):
+
+```sh
+pnpm setup:email
+```
+
+It asks whether the crew should **send** email (the Resend connector: each person connects their own Resend account, and every send waits for approval) and **receive** it. For receiving, it adds [Upstash for Redis](https://vercel.com/marketplace/upstash) from the Vercel Marketplace for thread state if the project has none, asks for your Resend API key (not echoed; saved as a sensitive variable), the domain to receive at, and who may write, then creates each crew member's Resend webhook. Deploy afterwards.
+
+- Each crew member answers its own address, `<member>@<domain>`. Replies stay in the email thread; approvals and questions arrive as numbered options you answer by replying.
+- Only senders on `LOPSI_EMAIL_SENDERS` (addresses, or whole domains as `@example.com`) reach the crew, and only when the receiving server reports a DMARC pass for the sender's domain, so a forged From address doesn't get through. Everything else is dropped without a reply; the deployment's logs say why. Set `LOPSI_EMAIL_AUTHSERV_ID` to the receiving server's name to trust only its results.
+- The domain needs receiving turned on in Resend (an MX record), or use your account's `<id>.resend.app` address.
+- Re-run `pnpm setup:email` after adding a crew member, to create its webhook.
+
 ## Tech stack
 
 | Layer | Technology |

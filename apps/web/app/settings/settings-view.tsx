@@ -35,6 +35,10 @@ export interface SettingsStatus {
     readonly name: string;
     readonly variable: string;
   }[];
+  /** Each member's email address, for members that answer email. */
+  readonly email: Readonly<Record<string, string>>;
+  /** How many entries LOPSI_EMAIL_SENDERS has. */
+  readonly emailSenders: number;
   /** Whether the GitHub connector and target repository are set up. */
   readonly github: boolean;
   /** Whether chat history and ownership are kept on the server. */
@@ -183,10 +187,13 @@ function SetupRows({ setup }: { readonly setup: MemberSetup }) {
 }
 
 function MemberSection({
+  email,
   member,
   onEdit,
   result,
 }: {
+  /** The member's address, when it answers email. */
+  readonly email: string | undefined;
   readonly member: CrewMember;
   readonly onEdit: (() => void) | undefined;
   readonly result: MemberSetupResult | undefined;
@@ -216,6 +223,15 @@ function MemberSection({
           agents/{member.id}
         </span>
       </div>
+      <Row label="Email">
+        {email ? (
+          <code className="text-xs">{email}</code>
+        ) : (
+          <span className="text-muted-foreground">
+            Off: run <code className="text-xs">pnpm setup:email</code>
+          </span>
+        )}
+      </Row>
       {result?.ok ? (
         <SetupRows setup={result.setup} />
       ) : (
@@ -313,6 +329,11 @@ function WorkspaceSection({
           ? "Kept on the server: the list, transcripts and workspace snapshots, in the private Blob store."
           : "Kept in each browser."}
       </Row>
+      <Row label="Email">
+        {Object.keys(status.email).length > 0
+          ? `On, from ${status.emailSenders} allowed sender ${status.emailSenders === 1 ? "entry" : "entries"} (LOPSI_EMAIL_SENDERS), when their domain passes DMARC.`
+          : "Off: run `pnpm setup:email` to let the crew send and receive email."}
+      </Row>
       <Row label="Budget per chat">
         {`$${status.budgetUsd.toFixed(2)}`} of model spend between Continue
         prompts (LOPSI_SESSION_BUDGET_USD).
@@ -403,6 +424,7 @@ export function SettingsView({
       />
       {crew.map((member) => (
         <MemberSection
+          email={status.email[member.id]}
           key={member.id}
           member={member}
           onEdit={canChange ? () => setEditing(member.id) : undefined}

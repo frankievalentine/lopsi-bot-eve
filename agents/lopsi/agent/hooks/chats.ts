@@ -5,7 +5,10 @@ import {
   recordChatReply,
 } from "../../../../apps/web/lib/chat-store.js";
 import { isProductionMode } from "../../../../apps/web/lib/production-mode.js";
-import type { SessionOwner } from "../../../../apps/web/lib/session-owners.js";
+import {
+  recordSessionOwner,
+  type SessionOwner,
+} from "../../../../apps/web/lib/session-owners.js";
 
 /** Whose list a session's chat goes in: the person who started it, in production mode. */
 function ownerOf(ctx: HookContext): SessionOwner | undefined {
@@ -29,8 +32,9 @@ async function quietly(write: Promise<void>): Promise<void> {
 }
 
 /**
- * Keeps each person's chat list (apps/web/lib/chat-store.ts) as the agent
- * works, so it's right on every device and updates while no browser is open.
+ * Records who started each session (the chat owner check), and keeps each
+ * person's chat list (apps/web/lib/chat-store.ts) as the agent works, so it's
+ * right on every device and updates while no browser is open.
  */
 export default defineHook({
   events: {
@@ -54,6 +58,15 @@ export default defineHook({
         await quietly(
           recordChatMessage(owner, ctx.agent.name, ctx.session.id, text)
         );
+      }
+    },
+    // Production mode: who started each session, on every channel (the web,
+    // email), so requireSessionOwner keeps it to them. Unlike the chat list,
+    // a failure here fails the turn: this is the access check's record.
+    async "turn.started"(_event, ctx) {
+      const { initiator } = ctx.session.auth;
+      if (isProductionMode() && initiator) {
+        await recordSessionOwner(ctx.session.id, initiator);
       }
     },
   },

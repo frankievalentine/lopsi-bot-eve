@@ -36,6 +36,7 @@ import {
   hasEnv,
   projectEnvs,
   readLinkedProject,
+  saveEnvs,
 } from "./vercel-api.mjs";
 
 const CATALOG_PATH = "apps/web/lib/connectors.json";
@@ -305,20 +306,20 @@ try {
     ...TARGETS.flatMap((environment) => ["--environment", environment]),
   ]);
 
-  if (missing.length > 0) {
-    const result = api(`/v10/projects/${encodeURIComponent(projectId)}/env`, {
-      body: [
-        { key: connector.variable, target: missing, type: "plain", value: uid },
-      ],
-      method: "POST",
-    });
-    if (result.failed?.length) {
-      fail(
-        `Couldn't save ${connector.variable}. Set it to ${uid} in the project's environment variables.`
-      );
-    }
-    console.log(`  Set ${connector.variable} (${missing.join(", ")})`);
-  }
+  saveEnvs(
+    api,
+    projectId,
+    missing.length > 0
+      ? [
+          {
+            key: connector.variable,
+            target: missing,
+            type: "plain",
+            value: uid,
+          },
+        ]
+      : []
+  );
   const commit = resolved.isNew
     ? `\n  Commit ${CATALOG_PATH} and push; the deployment picks ${connector.name} up from it.`
     : "";

@@ -13,3 +13,8 @@ allowBuilds:
 ignoredOptionalDependencies:
   - "@mongodb-js/zstd"
   - "node-liblzma"
+
+# One Chat SDK: @chat-adapter/shared (from @resend/chat-sdk-adapter) would
+# otherwise bring a second copy of chat beside the one the adapters share.
+overrides:
+  chat: 4.43.0

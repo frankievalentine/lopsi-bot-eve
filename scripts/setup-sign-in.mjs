@@ -22,7 +22,7 @@
 
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { createApi, fail, readLinkedProject } from "./vercel-api.mjs";
+import { createApi, fail, readLinkedProject, saveEnvs } from "./vercel-api.mjs";
 
 const CALLBACK_PATH = "/api/auth/callback/vercel";
 const PROJECT_ID_PREFIX = /^prj_/u;
@@ -181,18 +181,7 @@ function configureSignIn(project, configuredIds, missingTargets) {
       type: key === CLIENT_ID ? "plain" : "sensitive",
       value: values[key],
     }));
-  const result = api(`/v10/projects/${encodeURIComponent(projectId)}/env`, {
-    body: writes,
-    method: "POST",
-  });
-  if (result.failed?.length) {
-    fail(
-      "Some environment variables couldn't be saved. Check the project's environment variables and retry."
-    );
-  }
-  for (const write of writes) {
-    console.log(`  Set ${write.key} (${write.target.join(", ")})`);
-  }
+  saveEnvs(api, projectId, writes);
 }
 
 /**
