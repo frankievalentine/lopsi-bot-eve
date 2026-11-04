@@ -67,3 +67,8 @@ MIT License:
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
+
+The Resend connector's tool allowlist and approval lists in
+apps/web/lib/connectors.json follow the Resend connection in Vercel's
+marketing-team-eve-template (https://github.com/vercel-labs/marketing-team-eve-template),
+Copyright (c) 2026 Vercel, Inc., MIT License.

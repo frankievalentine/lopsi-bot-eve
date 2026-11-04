@@ -1,20 +1,33 @@
 import { connect } from "@vercel/connect/eve";
 import { defineDynamic, defineMcpClientConnection } from "eve/connections";
 import type { ConnectionToolAnnotations } from "eve/tools/approval";
-import { configuredConnectors } from "../../../../apps/web/lib/connectors.js";
+import {
+  type ConfiguredConnector,
+  configuredConnectors,
+} from "../../../../apps/web/lib/connectors.js";
 
 /**
  * Read-only tools run; everything else waits for a person, including tools the
- * server says nothing about. Annotations are the server's own hints.
+ * server says nothing about. Annotations are the server's own hints; a tool on
+ * the connector's `approve` list always asks, whatever its hints say.
  */
-function writesNeedApproval({
-  toolAnnotations,
-}: {
-  readonly toolAnnotations?: ConnectionToolAnnotations;
-}) {
-  return toolAnnotations?.readOnlyHint === true
-    ? "not-applicable"
-    : "user-approval";
+function approvalFor(connector: ConfiguredConnector) {
+  const alwaysAsk = new Set(connector.approve ?? []);
+  const prefix = `${connector.id}__`;
+  return ({
+    toolAnnotations,
+    toolName,
+  }: {
+    readonly toolAnnotations?: ConnectionToolAnnotations;
+    readonly toolName: string;
+  }) => {
+    const name = toolName.startsWith(prefix)
+      ? toolName.slice(prefix.length)
+      : toolName;
+    return alwaysAsk.has(name) || toolAnnotations?.readOnlyHint !== true
+      ? "user-approval"
+      : "not-applicable";
+  };
 }
 
 /**
@@ -36,7 +49,7 @@ export default defineDynamic(() => {
     connectors.map((connector) => [
       connector.id,
       defineMcpClientConnection({
-        approval: writesNeedApproval,
+        approval: approvalFor(connector),
         auth: connect({
           connector: connector.uid,
           displayName: connector.name,
@@ -44,6 +57,7 @@ export default defineDynamic(() => {
         description: connector.description,
         instanceKey: connector.uid,
         url: connector.url,
+        ...(connector.tools ? { tools: connector.tools } : {}),
       }),
     ])
   );

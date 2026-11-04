@@ -224,13 +224,14 @@ function addToCatalog(connector, uid) {
       `Couldn't read ${uid}'s MCP server URL. Run again with its URL: pnpm setup:connector <MCP URL> --id ${connector.id}`
     );
   }
-  const entry = {
-    description: connector.description,
-    id: connector.id,
-    name: connector.name,
-    url,
-    variable: connector.variable,
-  };
+  // Pairs, so the entry keeps the key order of the ones already in the file.
+  const entry = Object.fromEntries([
+    ["id", connector.id],
+    ["name", connector.name],
+    ["description", connector.description],
+    ["url", url],
+    ["variable", connector.variable],
+  ]);
   writeFileSync(
     CATALOG_PATH,
     `${JSON.stringify([...catalog, entry], null, 2)}\n`

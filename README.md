@@ -86,7 +86,7 @@ This creates a GitHub App through Vercel Connect (`GITHUB_CONNECTOR`). Install i
 
 ## Connectors
 
-The crew can use any service with an MCP server through [Vercel Connect](https://vercel.com/docs/connect). Linear, Notion and Sentry are listed already. None is on until you set it up, so the agent never reaches for a service it can't use:
+The crew can use any service with an MCP server through [Vercel Connect](https://vercel.com/docs/connect). Linear, Notion, Sentry and Resend are listed already. None is on until you set it up, so the agent never reaches for a service it can't use:
 
 ```sh
 pnpm setup:connector linear                      # listed in connectors.json
@@ -98,6 +98,7 @@ eve deploy
 The script creates a Vercel Connect connector for the service, attaches it to the project and stores its UID in `LINEAR_CONNECTOR` (or `NOTION_CONNECTOR`, `SENTRY_CONNECTOR`). The first time the crew needs the service, it asks you in the chat to connect your own account. In starter mode everyone shares one connection.
 
 - Tools the service marks read-only run straight away; every other call waits for your approval.
+- An entry can narrow what the crew sees and when it asks: `tools` (`{ "allow": [...] }` for an explicit list, so tools the server adds later stay hidden, or `{ "block": [...] }`) and `approve` (tools that always ask first, whatever the server says about them). Resend sees 47 of its tools (campaigns, templates, one-off sends, contacts, delivery logs, verified domains; no account administration), and sending or deleting always asks.
 - **Connections** in the sidebar shows which services you've connected, and disconnects one by revoking your grant at Vercel Connect.
 - A service that isn't listed yet is added to `apps/web/lib/connectors.json` with the MCP URL its connector reports; commit that file. Find services with `vercel connect discover <query>`.
 - A connector you created in the Vercel dashboard is reused when it's for the same MCP server.
