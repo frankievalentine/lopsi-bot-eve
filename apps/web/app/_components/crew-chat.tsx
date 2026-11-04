@@ -66,6 +66,7 @@ import type { CrewMember } from "@/lib/crew.generated";
 import { cn } from "@/lib/utils";
 import { formatWhen } from "@/lib/when";
 import type { Account } from "./account";
+import { ComputerButton, ComputerSurface, useComputer } from "./computer-panel";
 import { EveMessageView, textOf } from "./eve-message";
 import { useSignInRedirect } from "./use-sign-in-redirect";
 import { useTranscriptSaving } from "./use-transcript-saving";
@@ -181,6 +182,7 @@ export function CrewChat({
     resume: sessionId !== undefined,
   });
   useSignInRedirect(agent.error);
+  const computer = useComputer(agent.view);
   useTranscriptSaving({
     busy: agent.status === "busy",
     enabled: persist,
@@ -307,6 +309,11 @@ export function CrewChat({
           {member.role}
         </span>
         <AccessBadge account={account} />
+        <ComputerButton
+          activity={computer.activity}
+          onToggle={computer.toggle}
+          open={computer.open}
+        />
         <ChatHistoryMenu
           chatPath={chatPath}
           currentId={activeSessionId}
@@ -326,59 +333,70 @@ export function CrewChat({
         </Button>
       </header>
 
-      <Conversation className="min-h-0">
-        <ConversationContent className="mx-auto w-full max-w-3xl gap-8 px-5 py-8">
-          {agent.messages.length === 0 &&
-          !isResuming &&
-          errorMessage === undefined ? (
-            <ConversationEmptyState className="pt-24">
-              <Mascot kind={member.mascot} mood={mood} size={96} />
-              <div className="space-y-1">
-                <h3 className="text-base font-semibold">
-                  {member.name} is ready
-                </h3>
-                <p className="text-muted-foreground max-w-md text-sm">
-                  Send a message to get started.
-                </p>
-              </div>
-            </ConversationEmptyState>
-          ) : (
-            agent.messages.map((message) =>
-              showPendingActivity && message === lastMessage ? null : (
-                <EveMessageView
-                  asks={asks}
-                  key={message.id}
-                  message={message}
-                  view={agent.view}
-                  {...(retry && message.id === lastReplyId
-                    ? { onRetry: retry }
-                    : {})}
-                />
-              )
-            )
-          )}
-          {isResuming && agent.messages.length === 0 ? (
-            <Shimmer>Loading the chat…</Shimmer>
-          ) : null}
-          {showPendingActivity ? <Shimmer>{activityLabel(now)}</Shimmer> : null}
-          {errorMessage === undefined ? null : (
-            <ErrorNotice message={errorMessage} onRetry={retry} />
-          )}
-          {sessionEnded ? <EndedNotice onNewChat={startNewChat} /> : null}
-        </ConversationContent>
-        <ConversationScrollButton />
-      </Conversation>
+      <div className="flex min-h-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Conversation className="min-h-0">
+            <ConversationContent className="mx-auto w-full max-w-3xl gap-8 px-5 py-8">
+              {agent.messages.length === 0 &&
+              !isResuming &&
+              errorMessage === undefined ? (
+                <ConversationEmptyState className="pt-24">
+                  <Mascot kind={member.mascot} mood={mood} size={96} />
+                  <div className="space-y-1">
+                    <h3 className="text-base font-semibold">
+                      {member.name} is ready
+                    </h3>
+                    <p className="text-muted-foreground max-w-md text-sm">
+                      Send a message to get started.
+                    </p>
+                  </div>
+                </ConversationEmptyState>
+              ) : (
+                agent.messages.map((message) =>
+                  showPendingActivity && message === lastMessage ? null : (
+                    <EveMessageView
+                      asks={asks}
+                      key={message.id}
+                      message={message}
+                      view={agent.view}
+                      {...(retry && message.id === lastReplyId
+                        ? { onRetry: retry }
+                        : {})}
+                    />
+                  )
+                )
+              )}
+              {isResuming && agent.messages.length === 0 ? (
+                <Shimmer>Loading the chat…</Shimmer>
+              ) : null}
+              {showPendingActivity ? (
+                <Shimmer>{activityLabel(now)}</Shimmer>
+              ) : null}
+              {errorMessage === undefined ? null : (
+                <ErrorNotice message={errorMessage} onRetry={retry} />
+              )}
+              {sessionEnded ? <EndedNotice onNewChat={startNewChat} /> : null}
+            </ConversationContent>
+            <ConversationScrollButton />
+          </Conversation>
 
-      <Composer
-        account={account}
-        busy={isBusy}
-        disabled={isResuming || sessionEnded}
-        member={member}
-        onInput={setHasInputText}
-        onSend={send}
-        onStop={turnOpen ? stop : undefined}
-        showSuggestions={agent.messages.length === 0}
-      />
+          <Composer
+            account={account}
+            busy={isBusy}
+            disabled={isResuming || sessionEnded}
+            member={member}
+            onInput={setHasInputText}
+            onSend={send}
+            onStop={turnOpen ? stop : undefined}
+            showSuggestions={agent.messages.length === 0}
+          />
+        </div>
+        <ComputerSurface
+          activity={computer.activity}
+          onClose={computer.close}
+          open={computer.open}
+        />
+      </div>
     </main>
   );
 }
