@@ -2,7 +2,7 @@
 
 import { ConnectError } from "@vercel/connect";
 import { z } from "zod";
-import { isModelId, REASONING_LEVELS } from "@/lib/agent-model";
+import { isModelId, MAX_FALLBACKS, REASONING_LEVELS } from "@/lib/agent-model";
 import {
   ConfigConflictError,
   type MemberConfig,
@@ -29,6 +29,12 @@ export type ChangeResult =
   | { readonly ok: false; readonly error: string };
 
 const ModelSchema = z.object({
+  fallbacks: z
+    .array(
+      z.string().refine(isModelId, "Fallback models are provider/model ids.")
+    )
+    .max(MAX_FALLBACKS)
+    .optional(),
   model: z.string().refine(isModelId, "Choose a model from the list."),
   reasoning: z.enum(REASONING_LEVELS).optional(),
 });

@@ -1,6 +1,13 @@
 import { defineAgent } from "eve";
 
 export default defineAgent({
-  model: "openai/gpt-6-luna-fast",
+  model: "meituan/longcat-2.5",
+  modelOptions: {
+    providerOptions: {
+      gateway: {
+        models: ["alibaba/qwen3.7-flash"],
+      },
+    },
+  },
   reasoning: "high",
 });

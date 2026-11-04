@@ -59,6 +59,8 @@ type Mode =
   | { readonly kind: "new" };
 
 interface Form {
+  /** Fallback model ids, comma-separated. */
+  readonly fallbacks: string;
   readonly id: string;
   readonly instructions: string;
   readonly mascot: MascotKind;
@@ -71,6 +73,7 @@ interface Form {
 }
 
 const EMPTY_FORM: Form = {
+  fallbacks: "",
   id: "",
   instructions: NEW_INSTRUCTIONS,
   mascot: "lookout",
@@ -84,6 +87,7 @@ const EMPTY_FORM: Form = {
 
 function formOf(config: MemberConfig): Form {
   return {
+    fallbacks: (config.model?.fallbacks ?? []).join(", "),
     id: "",
     instructions: config.instructions ?? "",
     mascot: config.crew.mascot,
@@ -104,6 +108,10 @@ function configOf(form: Form, from: MemberConfig | undefined): MemberConfig {
     .filter(Boolean);
   const order = form.order.trim() === "" ? undefined : Number(form.order);
   const canEditModel = from === undefined || from.model !== undefined;
+  const fallbacks = form.fallbacks
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
   return {
     crew: {
       mascot: form.mascot,
@@ -118,6 +126,7 @@ function configOf(form: Form, from: MemberConfig | undefined): MemberConfig {
     ...(canEditModel && form.model.trim()
       ? {
           model: {
+            ...(fallbacks.length > 0 ? { fallbacks } : {}),
             model: form.model.trim(),
             ...(form.reasoning ? { reasoning: form.reasoning } : {}),
           },
@@ -435,42 +444,56 @@ function ModelFields({ editing, form, from, models, set }: FieldsProps) {
     );
   }
   return (
-    <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
+    <>
+      <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium">Model</span>
+          <Input
+            list={modelListId}
+            onChange={(e) => set("model")(e.target.value)}
+            placeholder="provider/model, from AI Gateway"
+            required={!editing}
+            value={form.model}
+          />
+          <datalist id={modelListId}>
+            {models.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.name}
+              </option>
+            ))}
+          </datalist>
+        </label>
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium">Reasoning</span>
+          <select
+            className="h-8 rounded-lg border bg-transparent px-2.5 text-sm"
+            onChange={(e) =>
+              set("reasoning")(e.target.value as Form["reasoning"])
+            }
+            value={form.reasoning}
+          >
+            <option value="">Not set</option>
+            {REASONING.map((level) => (
+              <option key={level} value={level}>
+                {level}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       <label className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium">Model</span>
+        <span className="font-medium">Fallback models</span>
+        <span className="text-muted-foreground text-xs">
+          Tried in order when the model fails on every provider.
+          Comma-separated, up to three.
+        </span>
         <Input
-          list={modelListId}
-          onChange={(e) => set("model")(e.target.value)}
-          placeholder="provider/model, from AI Gateway"
-          required={!editing}
-          value={form.model}
+          onChange={(e) => set("fallbacks")(e.target.value)}
+          placeholder="alibaba/qwen3.7-flash"
+          value={form.fallbacks}
         />
-        <datalist id={modelListId}>
-          {models.map((model) => (
-            <option key={model.id} value={model.id}>
-              {model.name}
-            </option>
-          ))}
-        </datalist>
       </label>
-      <label className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium">Reasoning</span>
-        <select
-          className="h-8 rounded-lg border bg-transparent px-2.5 text-sm"
-          onChange={(e) =>
-            set("reasoning")(e.target.value as Form["reasoning"])
-          }
-          value={form.reasoning}
-        >
-          <option value="">Not set</option>
-          {REASONING.map((level) => (
-            <option key={level} value={level}>
-              {level}
-            </option>
-          ))}
-        </select>
-      </label>
-    </div>
+    </>
   );
 }
 
