@@ -1,3 +1,7 @@
+<p align="center">
+  <img alt="Lopsi Bot" height="96" src="apps/web/public/l-mark.svg" width="96">
+</p>
+
 # Lopsi Bot for eve
 
 A crew of [eve](https://eve.dev) agents with the Lopsi Bot dashboard, deployed on Vercel. Each crew member is an eve workspace agent under `agents/<name>/`, and the web chat in `apps/web/` talks to it over that agent's routes (`/eve/<name>/v1`).
