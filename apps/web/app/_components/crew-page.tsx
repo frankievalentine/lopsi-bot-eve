@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { currentChatOwner } from "@/lib/chat-owner";
 import {
   type ChatRecord,
@@ -6,13 +6,10 @@ import {
   loadTranscript,
   type Transcript,
 } from "@/lib/chat-store";
-import { configuredConnectors } from "@/lib/connectors";
 import { CREW } from "@/lib/crew.generated";
-import { currentAccount } from "@/lib/current-account";
-import { configChangesUnavailable } from "@/lib/github";
 import { isSessionOwnedBy } from "@/lib/session-owners";
 import { CrewApp } from "./crew-app";
-import { SignInWithVercel } from "./sign-in-with-vercel";
+import { dashboardFeatures, pageAccess } from "./page-access";
 
 /**
  * Every crew page: checks access on the server, then renders the dashboard with
@@ -35,27 +32,12 @@ export async function CrewPage({
     notFound();
   }
 
-  const account = await currentAccount();
-  if (account === "sign-in-with-vercel") {
-    return <SignInWithVercel />;
+  const access = await pageAccess(path);
+  if ("page" in access) {
+    return access.page;
   }
-  if (account === "login") {
-    redirect(`/login?redirect=${encodeURIComponent(path)}`);
-  }
-  // Names only: connector UIDs stay on the server.
-  const connectors = configuredConnectors().map(({ id, name }) => ({
-    id,
-    name,
-  }));
-  // Configuration by pull request; local development edits files directly.
-  const reason = configChangesUnavailable();
-  const changes =
-    account.kind === "open"
-      ? undefined
-      : {
-          available: reason === undefined,
-          ...(reason === undefined ? {} : { reason }),
-        };
+  const { account } = access;
+  const { changes, connectors } = dashboardFeatures(account);
   const history = await savedHistory(sessionId);
   return (
     <CrewApp
