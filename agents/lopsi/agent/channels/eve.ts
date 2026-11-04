@@ -10,7 +10,6 @@ import { accessCookieAuth } from "../../../../apps/web/lib/access.js";
 import { auth } from "../../../../apps/web/lib/auth.js";
 import { isProductionMode } from "../../../../apps/web/lib/production-mode.js";
 import {
-  recordSessionOwner,
   requireSessionOwner,
   SIGNED_IN_AUTHENTICATOR,
 } from "../../../../apps/web/lib/session-owners.js";
@@ -80,13 +79,5 @@ export default eveChannel({
     // accepts no browser traffic.
     placeholderAuth(),
   ],
-  events: {
-    // Production mode: remember who started each session, for requireSessionOwner.
-    "turn.started": async (_event, ctx) => {
-      const { initiator } = ctx.session.auth;
-      if (isProductionMode() && initiator) {
-        await recordSessionOwner(ctx.session.id, initiator);
-      }
-    },
-  },
+  // Who started each session is recorded by hooks/chats.ts, for every channel.
 });

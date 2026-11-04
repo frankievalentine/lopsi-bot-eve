@@ -78,3 +78,29 @@ export function hasEnv(envs, key, target) {
     (env) => env.key === key && [env.target].flat().includes(target)
   );
 }
+
+/**
+ * Saves environment variables on the project. Values travel in the request
+ * body (stdin), never on the command line or in output.
+ *
+ * @param {(path: string, init?: { method?: string, body?: unknown }) => any} api
+ * @param {string} projectId
+ * @param {{ key: string, target: string[], type: "plain" | "sensitive", value: string }[]} writes
+ */
+export function saveEnvs(api, projectId, writes) {
+  if (writes.length === 0) {
+    return;
+  }
+  const result = api(`/v10/projects/${encodeURIComponent(projectId)}/env`, {
+    body: writes,
+    method: "POST",
+  });
+  if (result?.failed?.length) {
+    fail(
+      `Couldn't save ${writes.map((write) => write.key).join(", ")}. Check the project's environment variables and retry.`
+    );
+  }
+  for (const write of writes) {
+    console.log(`  Set ${write.key} (${write.target.join(", ")})`);
+  }
+}

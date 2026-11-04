@@ -191,6 +191,26 @@ async function changedOnly(
   );
 }
 
+/** The line a channel that needs its member's id (channels/resend.ts) declares it on. */
+const MEMBER_ID_LINE = `const MEMBER_ID = "${TEMPLATE_MEMBER}";`;
+
+/**
+ * A template file for the new member: a channel that declares its member's id
+ * gets the new one. A channel that should but doesn't is refused, so a copy
+ * never answers as the template member.
+ */
+function withMemberId(path: string, content: string, id: string): string {
+  if (content.includes(MEMBER_ID_LINE)) {
+    return content.replace(MEMBER_ID_LINE, `const MEMBER_ID = "${id}";`);
+  }
+  if (path.endsWith("/channels/resend.ts")) {
+    throw new ConfigConflictError(
+      `${path} no longer declares ${MEMBER_ID_LINE}, so it can't be copied for ${id}.`
+    );
+  }
+  return content;
+}
+
 /**
  * The files for a new crew member: its crew.json, instructions and model, the
  * template member's channel and connections, and the regenerated crew list.
@@ -239,7 +259,7 @@ export async function newMemberFiles(
   for (const [path, content] of copies) {
     if (content !== undefined) {
       files[path.replace(`agents/${TEMPLATE_MEMBER}/`, `agents/${id}/`)] =
-        content;
+        withMemberId(path, content, id);
     }
   }
   return files;
