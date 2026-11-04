@@ -126,6 +126,21 @@ It asks whether the crew should **send** email (the Resend connector: each perso
 - The domain needs receiving turned on in Resend (an MX record), or use your account's `<id>.resend.app` address.
 - Re-run `pnpm setup:email` after adding a crew member, to create its webhook.
 
+## Channels
+
+Besides the web chat and email, a crew member can answer a messaging channel through its provider's own [Chat SDK](https://chat-sdk.dev) adapter: AgentPhone, Dial and Sendblue (SMS, iMessage, voice), Kapso (WhatsApp), Lark / Feishu, Liveblocks and Velt (comment threads), Novu and Zernio (several platforms at once).
+
+```sh
+pnpm setup:channel sendblue
+```
+
+It asks which crew member answers, installs the adapter, writes `agents/<member>/agent/channels/<channel>.ts`, adds Upstash for Redis if the project has none, asks for the provider's keys (secrets aren't echoed) and who may write (`LOPSI_<CHANNEL>_SENDERS`: phone numbers or the provider's user ids), and prints the webhook URL to give the provider. Commit the new file, `package.json` and `pnpm-lock.yaml`, then deploy.
+
+- One crew member answers each channel. Everyone else's messages are dropped without a reply; the turn runs as the sender, so approvals and sign-ins reach only them. Phone numbers can be spoofed, which is why actions still ask first.
+- A channel whose variables aren't set is off: its webhook fails the provider's signature check and every message is dropped, so a committed channel never breaks `eve dev` or a deployment.
+- **Settings → Integrations** lists the channels and their setup commands; **Crew** shows which member answers which.
+- Beeper isn't offered: its adapter (0.2.0) can't be loaded by Node as published.
+
 ## Tech stack
 
 | Layer | Technology |

@@ -104,3 +104,8 @@ export function saveEnvs(api, projectId, writes) {
     console.log(`  Set ${write.key} (${write.target.join(", ")})`);
   }
 }
+
+/** Whether `key` is set for every one of `targets`. */
+export function hasEnvEverywhere(envs, key, targets) {
+  return targets.every((target) => hasEnv(envs, key, target));
+}

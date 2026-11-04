@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
   ExternalLinkIcon,
   GitPullRequestIcon,
   PencilIcon,
@@ -36,6 +38,8 @@ const ACCESS: Record<AccessMode, string> = {
   vercel:
     "Production mode: Sign in with Vercel, limited to this project's team. Each chat belongs to the person who started it.",
 };
+
+const TRAILING_PERIOD = /\.$/u;
 
 const LINKS = [
   {
@@ -138,6 +142,9 @@ function SetupRows({ setup }: { readonly setup: MemberSetup }) {
       <Row label="Tools">
         <Names empty="None" items={setup.tools} />
       </Row>
+      <Row label="Channels">
+        <Names empty="Web chat only" items={named(setup.channels)} />
+      </Row>
       <Row label="Connections">
         <Names empty="None set up" items={setup.connections} />
       </Row>
@@ -219,7 +226,8 @@ function MemberSection({
       ) : (
         <Row label="Setup">
           <span className="text-muted-foreground">
-            Couldn't read it: {result?.error ?? "no response"}.
+            Couldn't read it:{" "}
+            {(result?.error ?? "no response").replace(TRAILING_PERIOD, "")}.
           </span>
         </Row>
       )}
@@ -245,6 +253,7 @@ function ConnectorsSection({
         ) : undefined
       }
       description="Services the crew can use. Set one up with the command shown; people connect their own accounts in a chat."
+      title="Connectors"
     >
       {catalog.map((entry) => (
         <Row key={entry.id} label={entry.name}>
@@ -290,6 +299,32 @@ function ChangesStatus({
         </Button>
       ) : null}
     </span>
+  );
+}
+
+function ChannelsSection({
+  channels,
+}: {
+  readonly channels: SettingsStatus["channels"];
+}) {
+  return (
+    <Section
+      description="Where people can message the crew besides the web chat. Each is answered by one crew member and only from senders you allow; email has its own setup."
+      title="Channels"
+    >
+      <Row label="Email">
+        <code className="text-xs">pnpm setup:email</code>
+      </Row>
+      {channels.map((entry) => (
+        <Row key={entry.id} label={entry.name}>
+          {entry.configured ? (
+            <Badge variant="secondary">Set up</Badge>
+          ) : (
+            <code className="text-xs">pnpm setup:channel {entry.id}</code>
+          )}
+        </Row>
+      ))}
+    </Section>
   );
 }
 
@@ -344,6 +379,69 @@ function WorkspaceSection({
         </ul>
       </Row>
     </Section>
+  );
+}
+
+/**
+ * The crew one member at a time: numbered pages (1, 2, 3…), each named for
+ * its member, with previous and next. A one-member crew shows no pages.
+ */
+function CrewPages({
+  render,
+}: {
+  readonly render: (member: CrewMember) => ReactNode;
+}) {
+  const [index, setIndex] = useState(0);
+  const member = CREW[Math.min(index, CREW.length - 1)];
+  if (member === undefined) {
+    return <p className="text-muted-foreground text-sm">No crew yet.</p>;
+  }
+  const at = CREW.indexOf(member);
+  return (
+    <>
+      {CREW.length > 1 ? (
+        <nav
+          aria-label="Crew members"
+          className="flex flex-wrap items-center gap-1"
+        >
+          <Button
+            aria-label="Previous crew member"
+            disabled={at === 0}
+            onClick={() => setIndex(at - 1)}
+            size="icon-sm"
+            variant="ghost"
+          >
+            <ChevronLeftIcon className="size-4" />
+          </Button>
+          {CREW.map((candidate, page) => (
+            <Button
+              aria-current={page === at ? "page" : undefined}
+              aria-label={`${page + 1}: ${candidate.name}`}
+              key={candidate.id}
+              onClick={() => setIndex(page)}
+              size="sm"
+              title={candidate.name}
+              variant={page === at ? "secondary" : "ghost"}
+            >
+              {page + 1}
+            </Button>
+          ))}
+          <Button
+            aria-label="Next crew member"
+            disabled={at === CREW.length - 1}
+            onClick={() => setIndex(at + 1)}
+            size="icon-sm"
+            variant="ghost"
+          >
+            <ChevronRightIcon className="size-4" />
+          </Button>
+          <span className="text-muted-foreground ml-auto text-xs">
+            {at + 1} of {CREW.length}
+          </span>
+        </nav>
+      ) : null}
+      {render(member)}
+    </>
   );
 }
 
@@ -424,7 +522,7 @@ export function SettingsDialog({
           <Tabs className="min-h-0 flex-1 gap-3" defaultValue="workspace">
             <TabsList>
               <TabsTrigger value="workspace">Workspace</TabsTrigger>
-              <TabsTrigger value="connectors">Connectors</TabsTrigger>
+              <TabsTrigger value="integrations">Integrations</TabsTrigger>
               <TabsTrigger value="crew">Crew</TabsTrigger>
             </TabsList>
             <TabsContent className="min-h-0 overflow-auto" value="workspace">
@@ -434,26 +532,31 @@ export function SettingsDialog({
                 status={loaded.status}
               />
             </TabsContent>
-            <TabsContent className="min-h-0 overflow-auto" value="connectors">
+            <TabsContent
+              className="min-h-0 space-y-6 overflow-auto"
+              value="integrations"
+            >
               <ConnectorsSection
                 catalog={loaded.status.catalog}
                 onConnections={then(onConnections)}
               />
+              <ChannelsSection channels={loaded.status.channels} />
             </TabsContent>
             <TabsContent
-              className="min-h-0 space-y-6 overflow-auto"
+              className="min-h-0 space-y-4 overflow-auto"
               value="crew"
             >
-              {CREW.map((member) => (
-                <MemberSection
-                  email={loaded.status.email[member.id]}
-                  key={member.id}
-                  member={member}
-                  onEdit={onEdit ? then(() => onEdit(member.id)) : undefined}
-                  onOpenChat={() => onOpenChange(false)}
-                  result={loaded.setups[member.id]}
-                />
-              ))}
+              <CrewPages
+                render={(member) => (
+                  <MemberSection
+                    email={loaded.status.email[member.id]}
+                    member={member}
+                    onEdit={onEdit ? then(() => onEdit(member.id)) : undefined}
+                    onOpenChat={() => onOpenChange(false)}
+                    result={loaded.setups[member.id]}
+                  />
+                )}
+              />
             </TabsContent>
           </Tabs>
         ) : null}

@@ -1,0 +1,259 @@
+[
+  {
+    "id": "agentphone",
+    "name": "AgentPhone",
+    "description": "SMS, MMS, iMessage, and voice conversations through AgentPhone.",
+    "package": "@agentphone/chat-sdk-adapter",
+    "factory": "createAgentPhoneAdapter",
+    "adapter": "agentphone",
+    "streaming": false,
+    "options": {
+      "apiKey": {
+        "env": "AGENTPHONE_API_KEY"
+      },
+      "agentId": {
+        "env": "AGENTPHONE_AGENT_ID"
+      },
+      "webhookSecret": {
+        "env": "AGENTPHONE_WEBHOOK_SECRET"
+      }
+    },
+    "env": [
+      {
+        "name": "AGENTPHONE_API_KEY",
+        "secret": true
+      },
+      {
+        "name": "AGENTPHONE_AGENT_ID",
+        "secret": false
+      },
+      {
+        "name": "AGENTPHONE_WEBHOOK_SECRET",
+        "secret": true
+      }
+    ],
+    "senders": "phone numbers in +E.164"
+  },
+  {
+    "id": "dial",
+    "name": "Dial",
+    "description": "Give your agent a phone number for SMS, MMS, iMessage, and voice transcripts.",
+    "package": "@getdial/chat-sdk-adapter",
+    "factory": "createDialAdapter",
+    "adapter": "dial",
+    "streaming": false,
+    "options": {
+      "apiKey": {
+        "env": "DIAL_API_KEY"
+      },
+      "fromNumberId": {
+        "env": "DIAL_FROM_NUMBER_ID"
+      },
+      "webhookSecret": {
+        "env": "DIAL_WEBHOOK_SECRET"
+      }
+    },
+    "env": [
+      {
+        "name": "DIAL_API_KEY",
+        "secret": true
+      },
+      {
+        "name": "DIAL_FROM_NUMBER_ID",
+        "secret": false
+      },
+      {
+        "name": "DIAL_WEBHOOK_SECRET",
+        "secret": true
+      }
+    ],
+    "senders": "phone numbers in +E.164"
+  },
+  {
+    "id": "kapso",
+    "name": "Kapso (WhatsApp)",
+    "description": "Managed WhatsApp conversations, media, buttons, and history through Kapso.",
+    "package": "@kapso/chat-adapter",
+    "factory": "createKapsoAdapter",
+    "adapter": "kapso",
+    "streaming": false,
+    "options": {
+      "kapsoApiKey": {
+        "env": "KAPSO_API_KEY"
+      },
+      "phoneNumberId": {
+        "env": "KAPSO_PHONE_NUMBER_ID"
+      },
+      "webhookSecret": {
+        "env": "KAPSO_WEBHOOK_SECRET"
+      }
+    },
+    "env": [
+      {
+        "name": "KAPSO_API_KEY",
+        "secret": true
+      },
+      {
+        "name": "KAPSO_PHONE_NUMBER_ID",
+        "secret": false
+      },
+      {
+        "name": "KAPSO_WEBHOOK_SECRET",
+        "secret": true
+      }
+    ],
+    "senders": "WhatsApp phone numbers in +E.164"
+  },
+  {
+    "id": "lark",
+    "name": "Lark / Feishu",
+    "description": "Lark and Feishu chats with native card streaming via the Chat SDK.",
+    "package": "@larksuite/vercel-chat-adapter",
+    "factory": "createLarkAdapter",
+    "adapter": "lark",
+    "streaming": true,
+    "env": [
+      {
+        "name": "LARK_APP_ID",
+        "secret": false
+      },
+      {
+        "name": "LARK_APP_SECRET",
+        "secret": true
+      }
+    ],
+    "senders": "Lark user ids"
+  },
+  {
+    "id": "liveblocks",
+    "name": "Liveblocks",
+    "description": "Bring your agent into Liveblocks comment threads, mentions, and reactions.",
+    "package": "@liveblocks/chat-sdk-adapter",
+    "factory": "createLiveblocksAdapter",
+    "adapter": "liveblocks",
+    "streaming": true,
+    "options": {
+      "apiKey": {
+        "env": "LIVEBLOCKS_SECRET_KEY"
+      },
+      "webhookSecret": {
+        "env": "LIVEBLOCKS_WEBHOOK_SECRET"
+      },
+      "botUserId": {
+        "member": "id"
+      },
+      "botUserName": {
+        "member": "name"
+      }
+    },
+    "env": [
+      {
+        "name": "LIVEBLOCKS_SECRET_KEY",
+        "secret": true
+      },
+      {
+        "name": "LIVEBLOCKS_WEBHOOK_SECRET",
+        "secret": true
+      }
+    ],
+    "senders": "Liveblocks user ids"
+  },
+  {
+    "id": "novu",
+    "name": "Novu",
+    "description": "Reach Slack, Teams, WhatsApp, Telegram, and email through Novu.",
+    "package": "@novu/chat-sdk-adapter",
+    "factory": "createNovuAdapter",
+    "adapter": "novu",
+    "streaming": true,
+    "env": [
+      {
+        "name": "NOVU_SECRET_KEY",
+        "secret": true
+      },
+      {
+        "name": "NOVU_AGENT_IDENTIFIER",
+        "secret": false
+      }
+    ],
+    "senders": "Novu subscriber ids"
+  },
+  {
+    "id": "sendblue",
+    "name": "Sendblue",
+    "description": "Send and receive iMessage, SMS, and RCS through Sendblue.",
+    "package": "chat-adapter-sendblue",
+    "factory": "createSendblueAdapter",
+    "adapter": "sendblue",
+    "streaming": false,
+    "env": [
+      {
+        "name": "SENDBLUE_API_KEY",
+        "secret": true
+      },
+      {
+        "name": "SENDBLUE_API_SECRET",
+        "secret": true
+      },
+      {
+        "name": "SENDBLUE_FROM_NUMBER",
+        "secret": false
+      }
+    ],
+    "senders": "phone numbers in +E.164"
+  },
+  {
+    "id": "velt",
+    "name": "Velt",
+    "description": "Add agents to anchored comments across documents, canvases, PDFs, and video.",
+    "package": "@veltdev/chat-sdk-adapter",
+    "factory": "createVeltAdapter",
+    "adapter": "velt",
+    "streaming": true,
+    "options": {
+      "apiKey": {
+        "env": "VELT_API_KEY"
+      },
+      "webhookSecret": {
+        "env": "VELT_WEBHOOK_SECRET"
+      },
+      "botUserId": {
+        "member": "id"
+      },
+      "botUserName": {
+        "member": "name"
+      }
+    },
+    "env": [
+      {
+        "name": "VELT_API_KEY",
+        "secret": true
+      },
+      {
+        "name": "VELT_WEBHOOK_SECRET",
+        "secret": true
+      }
+    ],
+    "senders": "Velt user ids"
+  },
+  {
+    "id": "zernio",
+    "name": "Zernio",
+    "description": "Reach seven social and messaging platforms through one Zernio integration.",
+    "package": "@zernio/chat-sdk-adapter",
+    "factory": "createZernioAdapter",
+    "adapter": "zernio",
+    "streaming": true,
+    "env": [
+      {
+        "name": "ZERNIO_API_KEY",
+        "secret": true
+      },
+      {
+        "name": "ZERNIO_WEBHOOK_SECRET",
+        "secret": true
+      }
+    ],
+    "senders": "Zernio sender ids"
+  }
+]

@@ -22,12 +22,13 @@ import { existsSync, readdirSync } from "node:fs";
 import {
   memberAddress,
   webhookSecretVariable,
-} from "../apps/web/lib/email-core.mjs";
+} from "../apps/web/lib/channel-core.mjs";
 import { ask, askSecret, closePrompts, confirm } from "./prompt.mjs";
+import { ensureRedis } from "./upstash.mjs";
 import {
   createApi,
   fail,
-  hasEnv,
+  hasEnvEverywhere,
   projectEnvs,
   readLinkedProject,
   saveEnvs,
@@ -35,15 +36,9 @@ import {
 
 const TARGETS = ["production", "preview"];
 const RESEND = "https://api.resend.com";
-const REDIS_KEYS = ["REDIS_URL", "KV_URL"];
-const NOT_SLUG = /[^a-z0-9-]/gu;
 
 const { projectId, team } = readLinkedProject();
 const api = createApi(team);
-
-function vercel(args) {
-  execFileSync("vercel", args, { stdio: "inherit" });
-}
 
 /** A Resend API call with the key; failures stop setup with Resend's message. */
 async function resend(apiKey, path, init = {}) {
@@ -83,45 +78,7 @@ function productionValue(envs, key) {
   )?.value;
 }
 
-const everywhere = (envs, key) =>
-  TARGETS.every((target) => hasEnv(envs, key, target));
-
-/** Upstash Redis for thread state, from the Vercel Marketplace, unless connected. */
-async function ensureRedis(project, envs) {
-  if (REDIS_KEYS.some((key) => everywhere(envs, key))) {
-    console.log("  Thread state: Redis already connected");
-    return;
-  }
-  console.log(
-    "\n  Email threads need a Redis store. This adds Upstash for Redis from the Vercel Marketplace (it has a free plan) and connects it to the project."
-  );
-  if (!(await confirm("Add Upstash for Redis now?"))) {
-    fail(
-      "Email needs Redis. Re-run when you're ready, or connect a Redis store yourself (REDIS_URL)."
-    );
-  }
-  const region = await ask("Primary region", "iad1");
-  const name = `${project.name.slice(0, 40)}-email-state`
-    .toLowerCase()
-    .replace(NOT_SLUG, "-");
-  vercel([
-    "integration",
-    "add",
-    "upstash/upstash-kv",
-    "--name",
-    name,
-    "--meta",
-    `primaryRegion=${region}`,
-    ...TARGETS.flatMap((target) => ["--environment", target]),
-  ]);
-  const after = projectEnvs(api, projectId);
-  if (!REDIS_KEYS.some((key) => everywhere(after, key))) {
-    fail(
-      "Upstash was added but no REDIS_URL or KV_URL reached production and preview. Connect the store to the project in its Storage settings, then re-run."
-    );
-  }
-  console.log("  Thread state: Upstash Redis connected");
-}
+const everywhere = (envs, key) => hasEnvEverywhere(envs, key, TARGETS);
 
 /** The Resend API key: kept if set, otherwise asked for, checked and saved. */
 async function ensureApiKey(envs) {
@@ -270,9 +227,8 @@ try {
         "No crew member has agent/channels/resend.ts. Copy it from agents/lopsi/."
       );
     }
+    await ensureRedis({ api, project, projectId, targets: TARGETS });
     let envs = projectEnvs(api, projectId);
-    await ensureRedis(project, envs);
-    envs = projectEnvs(api, projectId);
     const { apiKey, domains } = await ensureApiKey(envs);
     envs = projectEnvs(api, projectId);
     const domain = await ensureAddresses(envs, domains);
