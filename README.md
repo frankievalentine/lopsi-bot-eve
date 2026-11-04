@@ -2,7 +2,26 @@
 
 A crew of [eve](https://eve.dev) agents with the Lopsi Bot dashboard, deployed on Vercel. Each crew member is an eve workspace agent under `agents/<name>/`, and the web chat in `apps/web/` talks to it over that agent's routes (`/eve/<name>/v1`).
 
-Status: early. Both access modes, the Lopsi dashboard (crew list, chat, approvals and questions), connectors and configuration by pull request work.
+Status: early. Working: both access modes, the Lopsi dashboard (crew list, chat, approvals and questions, a computer panel per chat), server-side chat history, connectors, email and messaging channels, Settings, and changing the crew by pull request.
+
+## Deploy
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ffrankievalentine%2Flopsi-bot-eve&project-name=lopsi-bot&repository-name=lopsi-bot&env=LOPSI_ACCESS_PASSWORD&envDescription=The%20password%20your%20crew%27s%20visitors%20enter.%20At%20least%2016%20characters%3B%20generate%20one%20with%3A%20openssl%20rand%20-base64%2032&envLink=https%3A%2F%2Fgithub.com%2Ffrankievalentine%2Flopsi-bot-eve%23starter-mode&connect=%5B%7B%22type%22%3A%22github%22%2C%22env%22%3A%22GITHUB_CONNECTOR%22%7D%5D)
+
+The button clones this repository into your GitHub account and deploys it. It asks for two things:
+
+- **`LOPSI_ACCESS_PASSWORD`**: the shared password for [starter mode](#starter-mode). That's all a deployment needs to run.
+- **A GitHub App connector** (`GITHUB_CONNECTOR`): lets the dashboard open pull requests for crew changes. Install the app on your new repository with read and write access to contents and pull requests.
+
+Then, from a clone of your repository, linked to the project (`vercel link`), add what you need:
+
+| Command | Adds |
+| --- | --- |
+| `pnpm setup:sign-in` | [Production mode](#production-mode): Sign in with Vercel for your team, one identity per person, private chats and history |
+| `pnpm setup:connector <service>` | [Connectors](#connectors): Linear, Notion, Sentry, Resend, or any MCP service |
+| `pnpm setup:email` | [Email](#email) to and from the crew |
+| `pnpm setup:channel <channel>` | [Channels](#channels): SMS, iMessage, WhatsApp and more |
+
 
 ## Access
 
