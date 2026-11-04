@@ -5,7 +5,8 @@ import { useCallback, useState } from "react";
 import { PromptInputProvider } from "@/components/ai-elements/prompt-input";
 import type { MascotMood } from "@/components/mascot";
 import { authClient } from "@/lib/auth-client";
-import { useChatHistory } from "@/lib/chat-history";
+import { useMergedHistory } from "@/lib/chat-history";
+import type { ChatRecord, Transcript } from "@/lib/chat-store";
 import { CREW, type CrewMember } from "@/lib/crew.generated";
 import { faviconFor, useFavicon } from "@/lib/favicon";
 import { useIsPhone } from "@/lib/use-phone";
@@ -31,22 +32,28 @@ type MemberDialogMode =
 export function CrewApp({
   account,
   changes,
+  chatList,
   connectors,
   memberId,
+  savedTranscript,
   sessionId,
 }: {
   readonly account: Account;
+  /** Production mode: the person's chats from the server; absent where the list is browser-only. */
+  readonly chatList?: readonly ChatRecord[];
   /** Whether configuration by pull request is possible; absent in local development. */
   readonly changes?: { readonly available: boolean; readonly reason?: string };
   /** The configured connectors, names only. */
   readonly connectors: readonly ConnectorSummary[];
   readonly memberId?: string;
+  /** Production mode: the open chat's saved transcript, when it has one. */
+  readonly savedTranscript?: Transcript;
   readonly sessionId?: string;
 }) {
   const router = useRouter();
   const phone = useIsPhone();
   const owner = ownerOf(account);
-  const history = useChatHistory(owner);
+  const history = useMergedHistory(owner, chatList);
   const [moods, setMoods] = useState<Record<string, MascotMood>>({});
   const [connectionsOpen, setConnectionsOpen] = useState(false);
   const [memberDialog, setMemberDialog] = useState<MemberDialogMode | null>(
@@ -118,6 +125,8 @@ export function CrewApp({
           member={member}
           onMood={onMood}
           owner={owner}
+          persist={chatList !== undefined}
+          saved={savedTranscript}
           {...(changes?.available
             ? {
                 onEdit: () =>

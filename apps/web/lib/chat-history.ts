@@ -1,12 +1,16 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
+import { MAX_CHATS, mergeHistory } from "./chat-history-merge";
+import type { ChatRecord } from "./chat-store";
 
 /**
- * Each crew member's chats, kept in this browser's localStorage. eve has no API
- * that lists sessions, so this is the only index; it doesn't follow a person to
- * another device. Stored per signed-in person (`owner`), so people who share a
- * browser don't see each other's lists.
+ * Each crew member's chats, kept in this browser's localStorage, per signed-in
+ * person (`owner`), so people who share a browser don't see each other's lists.
+ * eve has no API that lists sessions. In production mode the agent also keeps
+ * a list on the server (lib/chat-store.ts), merged in with
+ * {@link useMergedHistory}; this browser's copy adds what just happened here
+ * and which chat each member opens next.
  */
 
 /** One past or current chat with a crew member. */
@@ -30,7 +34,6 @@ export interface MemberHistory {
 export type ChatHistory = Readonly<Record<string, MemberHistory>>;
 
 const VERSION = "v1";
-const MAX_CHATS = 50;
 const EMPTY: ChatHistory = {};
 
 const listeners = new Set<() => void>();
@@ -95,7 +98,7 @@ function subscribe(listener: () => void): () => void {
  * The owner's chat history, re-rendering when it changes here or in another tab.
  * Empty during server rendering.
  */
-export function useChatHistory(owner: string): ChatHistory {
+function useChatHistory(owner: string): ChatHistory {
   return useSyncExternalStore(
     subscribe,
     () => read(owner),
@@ -169,6 +172,18 @@ export function setCurrentChat(
 ): void {
   updateMember(owner, memberId, ({ current: _previous, ...member }) =>
     sessionId === undefined ? member : { ...member, current: sessionId }
+  );
+}
+
+/** The owner's history, with the server's chat list merged in when there is one. */
+export function useMergedHistory(
+  owner: string,
+  server: readonly ChatRecord[] | undefined
+): ChatHistory {
+  const local = useChatHistory(owner);
+  return useMemo(
+    () => (server === undefined ? local : mergeHistory(local, server)),
+    [local, server]
   );
 }
 

@@ -7,22 +7,16 @@ import {
 } from "eve/channels/auth";
 import { eveChannel } from "eve/channels/eve";
 import { accessCookieAuth } from "../../../../apps/web/lib/access.js";
+import { auth } from "../../../../apps/web/lib/auth.js";
+import { isProductionMode } from "../../../../apps/web/lib/production-mode.js";
 import {
-  auth,
-  isVercelSignInConfigured,
-} from "../../../../apps/web/lib/auth.js";
-import {
-  isSessionOwnerStoreConfigured,
   recordSessionOwner,
   requireSessionOwner,
+  SIGNED_IN_AUTHENTICATOR,
 } from "../../../../apps/web/lib/session-owners.js";
 
-/** Production mode needs both: team sign-in, and a store binding chats to their owners. */
-const productionMode = () =>
-  isVercelSignInConfigured && isSessionOwnerStoreConfigured();
-
 const betterAuthSession: AuthFn<Request> = async (request) => {
-  if (!productionMode()) {
+  if (!isProductionMode()) {
     return null;
   }
   const session = await auth.api.getSession({ headers: request.headers });
@@ -40,7 +34,7 @@ const betterAuthSession: AuthFn<Request> = async (request) => {
 
   const caller = {
     attributes,
-    authenticator: "better-auth:vercel",
+    authenticator: SIGNED_IN_AUTHENTICATOR,
     principalId: session.user.id,
     principalType: "user",
   };
@@ -64,7 +58,7 @@ const deploymentOidc: AuthFn<Request> = withAuthChallenges(
     if (!caller || caller.principalType === "service") {
       return null;
     }
-    if (caller.principalType === "user" && productionMode()) {
+    if (caller.principalType === "user" && isProductionMode()) {
       await requireSessionOwner(request, caller);
     }
     return caller;
@@ -90,7 +84,7 @@ export default eveChannel({
     // Production mode: remember who started each session, for requireSessionOwner.
     "turn.started": async (_event, ctx) => {
       const { initiator } = ctx.session.auth;
-      if (productionMode() && initiator) {
+      if (isProductionMode() && initiator) {
         await recordSessionOwner(ctx.session.id, initiator);
       }
     },
