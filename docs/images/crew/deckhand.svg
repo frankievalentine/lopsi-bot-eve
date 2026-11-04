@@ -1,0 +1,101 @@
+<svg
+  aria-label="Tinker"
+  height="72"
+  role="img"
+  style="flex-shrink:0"
+  viewBox="0 0 100 100"
+  width="72"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <ellipse
+    cx="50"
+    cy="95"
+    fill="#000"
+    opacity="0.09"
+    rx="30"
+    ry="3.5"
+  ></ellipse>
+  <g style="transform:translateY(0px);transition:transform 600ms ease-in-out">
+    <path
+      d="M38 30 L62 30 C79 30 92 43 92 60 C92 77 79 89 62 89 L38 89 C21 89 8 77 8 60 C8 43 21 30 38 30 Z"
+      fill="#DD4934"
+      stroke="#DD4934"
+      stroke-linejoin="round"
+      stroke-width="0"
+    ></path>
+    <path
+      d="M38 30 L62 30 C79 30 92 43 92 60 C92 77 79 89 62 89 L38 89 C21 89 8 77 8 60 C8 43 21 30 38 30 Z"
+      fill="#FF6A55"
+      stroke="#FF6A55"
+      stroke-linejoin="round"
+      stroke-width="0"
+      transform="translate(0 -3.5)"
+    ></path>
+    <ellipse
+      cx="23"
+      cy="41"
+      fill="#fff"
+      opacity="0.42"
+      rx="8.5"
+      ry="4.2"
+      transform="rotate(-35 23 41)"
+    ></ellipse>
+    <path
+      d="M9 47 C30 39 70 39 91 47"
+      fill="none"
+      stroke="#1E2333"
+      stroke-linecap="round"
+      stroke-width="5"
+    ></path>
+    <path
+      d="M89 45 L97 39 M89 47 L98 50"
+      fill="none"
+      stroke="#1E2333"
+      stroke-linecap="round"
+      stroke-width="4"
+    ></path>
+    <ellipse
+      cx="35"
+      cy="71"
+      fill="#FF4D8D"
+      opacity="0.28"
+      rx="4.5"
+      ry="2.6"
+    ></ellipse>
+    <ellipse
+      cx="65"
+      cy="71"
+      fill="#FF4D8D"
+      opacity="0.28"
+      rx="4.5"
+      ry="2.6"
+    ></ellipse>
+    <g>
+      <ellipse cx="38" cy="61" fill="#fff" rx="7" ry="8.26"></ellipse>
+      <circle cx="38" cy="61" fill="#1E2333" r="4.2"></circle>
+      <circle
+        cx="36.403999999999996"
+        cy="59.236"
+        fill="#fff"
+        r="1.4000000000000001"
+      ></circle>
+    </g>
+    <g>
+      <ellipse cx="62" cy="61" fill="#fff" rx="7" ry="8.26"></ellipse>
+      <circle cx="62" cy="61" fill="#1E2333" r="4.2"></circle>
+      <circle
+        cx="60.403999999999996"
+        cy="59.236"
+        fill="#fff"
+        r="1.4000000000000001"
+      ></circle>
+    </g>
+    <path
+      d="M46.5 75.26 Q50 78.76 53.5 75.26"
+      fill="none"
+      stroke="#1E2333"
+      stroke-linecap="round"
+      stroke-width="2.6"
+    ></path>
+  </g>
+</svg>

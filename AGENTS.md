@@ -10,7 +10,7 @@ For a content-only change to the root agent's identity, purpose, tone, or respon
 ls node_modules/eve/docs
 ```
 
-Start with `docs/README.md`: it maps each task to the page that covers it. Read that page before authoring tools, connections, channels, skills, subagents, schedules, or deployment. In a workspace or local package install, resolve the installed `eve` package location first. If the package docs are missing, use https://eve.dev/docs.
+Start with eve's `docs/README.md` (in the installed `eve` package, not this repository's `docs/`, which is the template's own guide): it maps each task to the page that covers it. Read that page before authoring tools, connections, channels, skills, subagents, schedules, or deployment. In a workspace or local package install, resolve the installed `eve` package location first. If the package docs are missing, use https://eve.dev/docs.
 
 Use a bounded authoring loop:
 

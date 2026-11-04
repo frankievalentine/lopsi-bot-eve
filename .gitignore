@@ -10,5 +10,5 @@ dist
 .DS_Store
 *.tsbuildinfo
 
-# Local-only planning docs
-docs/
+# Local-only planning notes
+.local/
