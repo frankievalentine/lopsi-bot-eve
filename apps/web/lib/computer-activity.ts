@@ -1,12 +1,14 @@
 /**
  * What a chat's sandbox did, from eve's call observations: the shell commands
  * it ran and the files it wrote or read. eve has no API that lists a sandbox's
- * files, so files the shell created on its own don't appear here.
+ * files; in production mode a snapshot taken after each turn
+ * (workspace-store.ts) adds the files the shell made on its own.
  *
  * @packageDocumentation
  */
 
 import type { CallObservation, CallState } from "eve/events";
+import type { WorkspaceSnapshot } from "./workspace-store";
 
 /** One `bash` call. */
 export interface CommandRun {
@@ -29,11 +31,15 @@ export interface CommandRun {
 export interface FileEntry {
   readonly at?: string;
   readonly content?: string;
-  readonly how: "read" | "written";
+  /** Written or read in this chat, or only seen in the workspace snapshot. */
+  readonly how: "read" | "written" | "in workspace";
   /** Only part of the file was read. */
   readonly partial: boolean;
   /** Relative to the workspace. */
   readonly path: string;
+  readonly size?: number;
+  /** Why there's no content: not text, or too large to keep. */
+  readonly skipped?: "binary" | "large";
   /** eve kept the content out of the stream (too large); not shown here. */
   readonly stored: boolean;
 }
@@ -148,4 +154,51 @@ export function computerActivity(
     }
   }
   return { commands, files: [...files.values()].reverse() };
+}
+
+/**
+ * The chat's files with the workspace snapshot merged in: every file the
+ * snapshot lists, and for each one the newer of what the chat saw and what the
+ * snapshot holds. Newest first.
+ */
+export function withWorkspace(
+  files: readonly FileEntry[],
+  snapshot: WorkspaceSnapshot | undefined
+): readonly FileEntry[] {
+  if (snapshot === undefined) {
+    return files;
+  }
+  const seen = new Map(files.map((file) => [file.path, file]));
+  const merged = snapshot.files.map((file): FileEntry => {
+    const chat = seen.get(file.path);
+    seen.delete(file.path);
+    const chatIsNewer =
+      chat?.at !== undefined && chat.at > snapshot.takenAt && !chat.stored;
+    if (
+      chat &&
+      (chatIsNewer || file.content === undefined) &&
+      chat.content !== undefined &&
+      file.skipped === undefined
+    ) {
+      return { ...chat, size: file.size };
+    }
+    return {
+      how: chat?.how ?? "in workspace",
+      partial: false,
+      path: file.path,
+      size: file.size,
+      stored: false,
+      ...(file.modifiedAt === undefined ? {} : { at: file.modifiedAt }),
+      ...(file.content === undefined ? {} : { content: file.content }),
+      ...(file.skipped === undefined ? {} : { skipped: file.skipped }),
+    };
+  });
+  // A file the chat saw after the snapshot isn't in it yet; one it saw before
+  // and the snapshot doesn't list was removed.
+  const later = [...seen.values()].filter(
+    (file) => file.at !== undefined && file.at > snapshot.takenAt
+  );
+  return [...later, ...merged].sort((a, b) =>
+    (b.at ?? "").localeCompare(a.at ?? "")
+  );
 }
