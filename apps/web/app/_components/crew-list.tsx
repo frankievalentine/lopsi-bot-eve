@@ -42,6 +42,8 @@ export interface CrewListProps {
   readonly moodOf: (member: CrewMember) => MascotMood;
   /** Opens the Connections dialog; absent when no connector is set up. */
   readonly onConnections?: () => void;
+  /** Opens the Settings dialog. */
+  readonly onSettings: () => void;
   /** Absent in local development, where nobody signs in. */
   readonly onSignOut?: () => void;
   readonly selectedId?: string;
@@ -128,6 +130,7 @@ export function CrewSidebar({
   history,
   moodOf,
   onConnections,
+  onSettings,
   onSignOut,
   selectedId,
 }: CrewListProps) {
@@ -237,13 +240,14 @@ export function CrewSidebar({
             Connections
           </button>
         ) : null}
-        <Link
+        <button
           className="hover:bg-sidebar-accent flex w-full items-center gap-2.5 rounded-md p-2 text-left text-sm transition-colors"
-          href="/settings"
+          onClick={onSettings}
+          type="button"
         >
           <SettingsIcon className="size-4" />
           Settings
-        </Link>
+        </button>
       </div>
 
       <div className="border-sidebar-border flex items-center gap-2.5 border-t px-5 py-3">
@@ -281,6 +285,7 @@ export function MobileCrewList({
   history,
   moodOf,
   onConnections,
+  onSettings,
   onSignOut,
 }: CrewListProps) {
   const [searching, setSearching] = useState(false);
@@ -292,39 +297,31 @@ export function MobileCrewList({
   return (
     <div className="bg-background flex min-h-svh flex-col">
       <header className="flex items-center gap-2 px-4 pt-5 pb-2">
-        {onSignOut || onConnections || changes?.available ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              aria-label={`${person.name}: account`}
-              className="shrink-0 rounded-full"
-            >
-              <Avatar account={account} initials={person.initials} size="lg" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {changes?.available ? (
-                <DropdownMenuItem onClick={changes.onPendingChanges}>
-                  Pending changes
-                  <PendingBadge count={changes.pendingCount} />
-                </DropdownMenuItem>
-              ) : null}
-              {onConnections ? (
-                <DropdownMenuItem onClick={onConnections}>
-                  Connections
-                </DropdownMenuItem>
-              ) : null}
-              <DropdownMenuItem render={<Link href="/settings" />}>
-                Settings
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            aria-label={`${person.name}: account`}
+            className="shrink-0 rounded-full"
+          >
+            <Avatar account={account} initials={person.initials} size="lg" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            {changes?.available ? (
+              <DropdownMenuItem onClick={changes.onPendingChanges}>
+                Pending changes
+                <PendingBadge count={changes.pendingCount} />
               </DropdownMenuItem>
-              {onSignOut ? (
-                <DropdownMenuItem onClick={onSignOut}>
-                  Sign out
-                </DropdownMenuItem>
-              ) : null}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : (
-          <Avatar account={account} initials={person.initials} size="lg" />
-        )}
+            ) : null}
+            {onConnections ? (
+              <DropdownMenuItem onClick={onConnections}>
+                Connections
+              </DropdownMenuItem>
+            ) : null}
+            <DropdownMenuItem onClick={onSettings}>Settings</DropdownMenuItem>
+            {onSignOut ? (
+              <DropdownMenuItem onClick={onSignOut}>Sign out</DropdownMenuItem>
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
         <span className="ml-1 flex min-w-0 flex-1 flex-col">
           <span className="text-base font-semibold">Lopsi Bot</span>
           <span className="text-muted-foreground flex items-center gap-1 text-xs">
