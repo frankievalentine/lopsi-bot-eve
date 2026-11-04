@@ -34,6 +34,7 @@ apps/
         member-config-dialog.tsx, pending-changes-dialog.tsx, config-actions.ts   # changes by pull request
         crew-list.tsx       # sidebar and phone list (ported from Lopsi Bot)
         crew-chat.tsx       # one chat on useEveAgent: header, messages, composer
+        computer-panel.tsx  # the chat's sandbox: commands and files, from its tool calls
         eve-message.tsx     # eve message parts drawn with Lopsi's components
         sign-in-with-vercel.tsx
       api/auth/[...all]/    # Better Auth routes; 404 unless production mode is configured
@@ -50,6 +51,7 @@ apps/
       agent-model.ts        # reads and rewrites the model in a generated agent.ts
       chat-history.ts       # each person's chat list in the browser, merged with the server's
       chat-store.ts         # production mode: chat list and transcripts in private Blob
+      computer-activity.ts  # bash, write_file and read_file calls as commands and files
       config-changes.ts     # a dashboard edit as the files of one pull request
       crew-core.mjs         # crew.json rules and crew.generated.ts, shared with scripts/crew.mjs
       github.ts             # repository, Connect GitHub token, reading files, opening pull requests
