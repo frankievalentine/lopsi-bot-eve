@@ -5,7 +5,7 @@ import {
   GitPullRequestDraftIcon,
   GitPullRequestIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,42 @@ import {
 } from "@/components/ui/dialog";
 import type { PullRequest } from "@/lib/github";
 import { pendingChanges } from "./config-actions";
+
+/**
+ * How many of the dashboard's pull requests are open, for the Pending changes
+ * badge. Refreshed on mount, when the tab regains focus (a merge on GitHub),
+ * and when the caller asks; `null` while unknown or unavailable.
+ */
+export function usePendingCount(enabled: boolean): {
+  readonly count: number | null;
+  readonly refresh: () => void;
+} {
+  const [count, setCount] = useState<number | null>(null);
+  const latest = useRef(0);
+  const refresh = useCallback(() => {
+    latest.current += 1;
+    const request = latest.current;
+    pendingChanges()
+      .then((result) => {
+        if (request === latest.current) {
+          setCount(result.ok ? result.pulls.length : null);
+        }
+      })
+      .catch(() => request === latest.current && setCount(null));
+  }, []);
+
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+    refresh();
+    const onFocus = () => refresh();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [enabled, refresh]);
+
+  return { count: enabled ? count : null, refresh };
+}
 
 /** The dashboard's open pull requests: changes waiting for review and merge. */
 export function PendingChangesDialog({

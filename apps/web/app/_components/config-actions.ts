@@ -46,8 +46,9 @@ const MemberConfigSchema = z.object({
 });
 
 /**
- * Who is asking, for the pull request's description. Local development edits
- * files directly, so it gets no change requests.
+ * Who is asking, for the pull request's description: a name only, since the
+ * repository may be public. Local development edits files directly, so it gets
+ * no change requests.
  */
 async function requester(): Promise<string | undefined> {
   const account = await currentAccount();
@@ -55,7 +56,7 @@ async function requester(): Promise<string | undefined> {
     return;
   }
   return account.kind === "vercel"
-    ? `${account.name} (${account.email})`
+    ? account.name
     : "the crew operator (shared password)";
 }
 

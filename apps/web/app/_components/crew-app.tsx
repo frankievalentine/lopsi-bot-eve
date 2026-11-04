@@ -15,7 +15,10 @@ import { ConnectionsDialog, type ConnectorSummary } from "./connections-dialog";
 import { CrewChat } from "./crew-chat";
 import { CrewSidebar, MobileCrewList } from "./crew-list";
 import { MemberConfigDialog } from "./member-config-dialog";
-import { PendingChangesDialog } from "./pending-changes-dialog";
+import {
+  PendingChangesDialog,
+  usePendingCount,
+} from "./pending-changes-dialog";
 
 type MemberDialogMode =
   | { readonly kind: "edit"; readonly memberId: string }
@@ -50,6 +53,13 @@ export function CrewApp({
     null
   );
   const [pendingOpen, setPendingOpen] = useState(false);
+  const pending = usePendingCount(changes?.available === true);
+  const onPendingOpenChange = (next: boolean) => {
+    setPendingOpen(next);
+    if (!next) {
+      pending.refresh();
+    }
+  };
   const member = CREW.find((candidate) => candidate.id === memberId);
 
   const moodOf = (candidate: CrewMember): MascotMood =>
@@ -92,6 +102,7 @@ export function CrewApp({
             ...changes,
             onNewMember: () => setMemberDialog({ kind: "new" }),
             onPendingChanges: () => setPendingOpen(true),
+            pendingCount: pending.count ?? 0,
           },
         }
       : {}),
@@ -134,10 +145,11 @@ export function CrewApp({
           <MemberConfigDialog
             mode={memberDialog ?? { kind: "new" }}
             onOpenChange={(next) => !next && setMemberDialog(null)}
+            onPullRequest={pending.refresh}
             open={memberDialog !== null}
           />
           <PendingChangesDialog
-            onOpenChange={setPendingOpen}
+            onOpenChange={onPendingOpenChange}
             open={pendingOpen}
           />
         </>

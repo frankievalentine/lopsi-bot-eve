@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { LMark } from "@/components/l-mark";
 import { Mascot, type MascotMood } from "@/components/mascot";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -49,7 +50,21 @@ interface ChangeActions {
   readonly available: boolean;
   readonly onNewMember: () => void;
   readonly onPendingChanges: () => void;
+  /** Open pull requests from the dashboard; 0 when none or unknown. */
+  readonly pendingCount: number;
   readonly reason?: string;
+}
+
+function PendingBadge({ count }: { readonly count: number }) {
+  return count ? (
+    <Badge
+      aria-label={`${count} open pull request${count === 1 ? "" : "s"}`}
+      className="ml-auto"
+      variant="secondary"
+    >
+      {count}
+    </Badge>
+  ) : null;
 }
 
 /** The person in the list's footer or header. */
@@ -209,6 +224,7 @@ export function CrewSidebar({
             >
               <GitPullRequestIcon className="size-4" />
               Pending changes
+              <PendingBadge count={changes.pendingCount} />
             </button>
           ) : null}
           {onConnections ? (
@@ -282,6 +298,7 @@ export function MobileCrewList({
               {changes?.available ? (
                 <DropdownMenuItem onClick={changes.onPendingChanges}>
                   Pending changes
+                  <PendingBadge count={changes.pendingCount} />
                 </DropdownMenuItem>
               ) : null}
               {onConnections ? (
