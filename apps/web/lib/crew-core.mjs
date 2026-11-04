@@ -24,6 +24,11 @@ export const CREW_SCHEMA_PATH = "../../scripts/crew.schema.json";
 export const CrewSchema = z
   .object({
     $schema: z.string().optional(),
+    // Which connectors (apps/web/lib/connectors.json ids) the member may use; absent is all of them.
+    connectors: z
+      .array(z.string().regex(/^[a-z][a-z0-9-]{0,30}$/u))
+      .max(30)
+      .optional(),
     mascot: z.enum(MASCOTS),
     name: z.string().trim().min(1).max(40),
     order: z.number().int().min(0).optional(),
@@ -62,7 +67,7 @@ export function parseCrewJson(text) {
  * @returns {string}
  */
 export function serializeCrewJson(data) {
-  const { mascot, name, order, role, suggestions } = data;
+  const { connectors, mascot, name, order, role, suggestions } = data;
   return `${JSON.stringify(
     {
       $schema: CREW_SCHEMA_PATH,
@@ -71,6 +76,7 @@ export function serializeCrewJson(data) {
       mascot,
       ...(order === undefined ? {} : { order }),
       ...(suggestions?.length ? { suggestions } : {}),
+      ...(connectors === undefined ? {} : { connectors }),
     },
     null,
     2

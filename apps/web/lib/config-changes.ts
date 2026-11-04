@@ -24,6 +24,12 @@ import {
   serializeCrewJson,
 } from "./crew-core.mjs";
 import type { BranchSnapshot } from "./github";
+import {
+  ACCESS_FILES,
+  type MemberAccess,
+  readMemberAccess,
+  writeMemberAccess,
+} from "./member-access";
 
 type CrewData = ReturnType<typeof CrewSchema.parse>;
 
@@ -52,6 +58,8 @@ const agentPath = (id: string) => `agents/${id}/agent/agent.ts`;
 
 /** A crew member's editable configuration, as it is on the branch. */
 export interface MemberConfig {
+  /** Built-in tools and the sandbox's network; a setting edited by hand is left out. */
+  readonly access?: MemberAccess;
   readonly crew: CrewData;
   /** `undefined` when the agent's instructions aren't a single instructions.md. */
   readonly instructions?: string;
@@ -86,11 +94,13 @@ export async function readMemberConfig(
       `${crewPath(id)} is invalid on the branch: ${parsed.error}`
     );
   }
+  const access = await readAccess(snapshot, id);
   const instructions = await snapshot.readFile(instructionsPath(id));
   const agentSource = await snapshot.readFile(agentPath(id));
   const model =
     agentSource === undefined ? undefined : readAgentModel(agentSource);
   return {
+    access,
     crew: parsed?.data ?? { mascot: "skipper", name: id },
     ...(instructions === undefined ? {} : { instructions }),
     ...(model === undefined ? {} : { model }),
@@ -129,7 +139,7 @@ export async function memberEditFiles(
   id: string,
   from: MemberConfig,
   to: MemberConfig
-): Promise<Record<string, string>> {
+): Promise<Record<string, string | null>> {
   const current = await readMemberConfig(snapshot, id);
   if (current === undefined) {
     throw new ConfigConflictError(
@@ -139,14 +149,15 @@ export async function memberEditFiles(
   if (
     !sameJson(current.crew, from.crew) ||
     current.instructions !== from.instructions ||
-    !sameJson(current.model, from.model)
+    !sameJson(current.model, from.model) ||
+    !sameJson(current.access ?? {}, from.access ?? {})
   ) {
     throw new ConfigConflictError(
       "Someone changed this crew member since you opened it. Reopen it and try again."
     );
   }
 
-  const files: Record<string, string> = {};
+  const files: Record<string, string | null> = accessEditFiles(id, from, to);
   if (!sameJson(to.crew, from.crew)) {
     files[crewPath(id)] = serializeCrewJson(to.crew);
     files[GENERATED] = await regeneratedCrew(snapshot, { [id]: to.crew });
@@ -175,15 +186,75 @@ export async function memberEditFiles(
   return await changedOnly(snapshot, files);
 }
 
+const accessPath = (id: string, file: string) => `agents/${id}/agent/${file}`;
+
+/** A member's access settings, from the files they live in. */
+async function readAccess(
+  snapshot: BranchSnapshot,
+  id: string
+): Promise<MemberAccess> {
+  const [bash, sandbox, webFetch, webSearch] = await Promise.all(
+    [
+      ACCESS_FILES.bash,
+      ACCESS_FILES.sandbox,
+      ACCESS_FILES.webFetch,
+      ACCESS_FILES.webSearch,
+    ].map((file) => snapshot.readFile(accessPath(id, file)))
+  );
+  return readMemberAccess({ bash, sandbox, webFetch, webSearch });
+}
+
+/**
+ * The files for access settings `to` changes. A setting whose file was edited
+ * by hand (absent from `from`) can't be changed here.
+ */
+function accessEditFiles(
+  id: string,
+  from: MemberConfig,
+  to: MemberConfig
+): Record<string, string | null> {
+  const before: MemberAccess = from.access ?? {};
+  const changes = Object.fromEntries(
+    Object.entries(to.access ?? {}).filter(
+      ([key, value]) => !sameJson(before[key as keyof MemberAccess], value)
+    )
+  ) as MemberAccess;
+  for (const key of Object.keys(changes) as (keyof MemberAccess)[]) {
+    if (before[key] === undefined) {
+      throw new ConfigConflictError(
+        `This crew member's ${ACCESS_FILES[key === "sandboxDomains" ? "sandbox" : key]} was edited by hand; change it there.`
+      );
+    }
+  }
+  try {
+    return Object.fromEntries(
+      Object.entries(writeMemberAccess(changes)).map(([file, content]) => [
+        accessPath(id, file),
+        content,
+      ])
+    );
+  } catch (error) {
+    throw new ConfigConflictError(
+      error instanceof Error ? error.message : String(error),
+      { cause: error }
+    );
+  }
+}
+
 /** Drops files whose new content is already on the branch, so a pull request lists only real changes. */
 async function changedOnly(
   snapshot: BranchSnapshot,
-  files: Record<string, string>
-): Promise<Record<string, string>> {
+  files: Record<string, string | null>
+): Promise<Record<string, string | null>> {
+  // A deletion counts only when the file is there.
   const entries = await Promise.all(
     Object.entries(files).map(
       async ([path, text]) =>
-        [path, text, (await snapshot.readFile(path)) === text] as const
+        [
+          path,
+          text,
+          ((await snapshot.readFile(path)) ?? null) === text,
+        ] as const
     )
   );
   return Object.fromEntries(

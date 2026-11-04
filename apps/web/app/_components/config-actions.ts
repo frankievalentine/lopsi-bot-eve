@@ -10,6 +10,7 @@ import {
   newMemberFiles,
   readMemberConfig,
 } from "@/lib/config-changes";
+import { connectorCatalog } from "@/lib/connectors";
 import { CrewSchema } from "@/lib/crew-core.mjs";
 import { currentAccount } from "@/lib/current-account";
 import {
@@ -39,7 +40,17 @@ const ModelSchema = z.object({
   reasoning: z.enum(REASONING_LEVELS).optional(),
 });
 
+const SwitchSchema = z.enum(["on", "off"]);
+
+const AccessSchema = z.object({
+  bash: SwitchSchema.optional(),
+  sandboxDomains: z.array(z.string().max(253)).max(20).optional(),
+  webFetch: z.enum(["off", "always", "once", "never"]).optional(),
+  webSearch: SwitchSchema.optional(),
+});
+
 const MemberConfigSchema = z.object({
+  access: AccessSchema.optional(),
   crew: CrewSchema,
   instructions: z.string().max(50_000).optional(),
   model: ModelSchema.optional(),
@@ -111,7 +122,7 @@ function pullBody(
     `Requested by ${who} in the Lopsi dashboard.`,
     "",
     "Files:",
-    ...files.map((file) => `- \`${file}\``),
+    ...files.map((file) => `- ${file}`),
     "",
     "Nothing changes until this is merged; Vercel deploys the merge as usual.",
   ].join("\n");
@@ -172,7 +183,9 @@ export async function proposeMemberEdit(
       body: pullBody(
         who,
         `Updates the **${after.crew.name}** crew member (\`agents/${memberId}\`).`,
-        Object.keys(files)
+        Object.entries(files).map(([path, content]) =>
+          content === null ? `\`${path}\` (removed)` : `\`${path}\``
+        )
       ),
       branch: branchName(memberId),
       files,
@@ -219,7 +232,7 @@ export async function proposeNewMember(input: unknown): Promise<ChangeResult> {
       body: pullBody(
         who,
         `Adds **${config.crew.name}** to the crew (\`agents/${id}\`).`,
-        Object.keys(files)
+        Object.keys(files).map((path) => `\`${path}\``)
       ),
       branch: branchName(id),
       files,
@@ -280,4 +293,22 @@ export async function modelOptions(): Promise<readonly ModelOption[]> {
   } catch {
     return modelCache?.models ?? [];
   }
+}
+
+/** The connectors a crew member can be limited to, for the Edit dialog. Names only. */
+export async function connectorChoices(): Promise<
+  readonly {
+    readonly configured: boolean;
+    readonly id: string;
+    readonly name: string;
+  }[]
+> {
+  if (typeof (await currentAccount()) === "string") {
+    return [];
+  }
+  return connectorCatalog().map(({ configured, id, name }) => ({
+    configured,
+    id,
+    name,
+  }));
 }
