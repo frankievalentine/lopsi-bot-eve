@@ -10,11 +10,20 @@
 import catalog from "./connectors.json";
 
 interface Connector {
+  /** Tools that always ask first, by their name on the server (`send-email`), whatever the server says about them. */
+  readonly approve?: readonly string[];
   /** What the model reads to pick the connection. */
   readonly description: string;
   /** The eve connection name; its tools are `<id>__<tool>`. */
   readonly id: string;
   readonly name: string;
+  /**
+   * Which of the server's tools the crew sees: `allow` for an explicit list
+   * (tools the server adds later stay hidden), or `block` to hide a few.
+   */
+  readonly tools?:
+    | { readonly allow: readonly string[] }
+    | { readonly block: readonly string[] };
   /** The service's MCP endpoint. */
   readonly url: string;
   /** The environment variable holding the Vercel Connect connector UID. */
