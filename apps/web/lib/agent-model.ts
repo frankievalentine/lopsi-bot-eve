@@ -1,7 +1,8 @@
 /**
  * Reads and changes the model in an agent's agent.ts, but only while the file
  * still has the shape eve generates, optionally with AI Gateway fallback models
- * (`modelOptions.providerOptions.gateway.models`). agent.ts is code; once
+ * (`modelOptions.providerOptions.gateway.models`) and the session budget from
+ * `./limits` (`limits`). agent.ts is code; once
  * someone edits it by hand, the dashboard shows the model as read-only instead
  * of rewriting it.
  *
@@ -18,11 +19,13 @@ const QUOTED_ID = /"(?<id>[^"]+)"/gu;
 /**
  * eve's generated agent.ts: an import, then defineAgent with a model, optional
  * fallback models and optional reasoning, keys in Biome's sorted order. The
- * fallback array is on one line, or one id per line when it's too long.
+ * fallback array is on one line, or one id per line when it's too long. The
+ * session budget, when used, adds its import and a `limits` key together.
  */
 const GENERATED_SHAPE = new RegExp(
   [
-    String.raw`^import \{ defineAgent \} from "eve";\n\nexport default defineAgent\(\{\n`,
+    String.raw`^import \{ defineAgent \} from "eve";\n(?<limitsImport>import \{ limits \} from "\./limits";\n)?\nexport default defineAgent\(\{\n`,
+    String.raw`(?<limitsKey> {2}limits,\n)?`,
     String.raw` {2}model: "(?<model>[^"\n]+)",\n`,
     String.raw`(?: {2}modelOptions: \{\n {4}providerOptions: \{\n {6}gateway: \{\n`,
     String.raw` {8}models: \[(?<fallbacks>(?:"[^"\n]+"(?:, "[^"\n]+")*)|(?:\n(?: {10}"[^"\n]+",\n)+ {8}))\],\n`,
@@ -64,6 +67,12 @@ export function readAgentModel(source: string): AgentModel | undefined {
   if (groups?.model === undefined || !isModelId(groups.model)) {
     return;
   }
+  if (
+    (groups.limitsImport === undefined) !==
+    (groups.limitsKey === undefined)
+  ) {
+    return;
+  }
   const { reasoning } = groups;
   if (
     reasoning !== undefined &&
@@ -103,12 +112,19 @@ function fallbacksBlock(fallbacks: readonly string[]): string {
   return `  modelOptions: {\n    providerOptions: {\n      gateway: {\n${models}      },\n    },\n  },\n`;
 }
 
-/** agent.ts in eve's generated shape, with this model, fallbacks and reasoning. */
-export function writeAgentModel({
-  fallbacks = [],
-  model,
-  reasoning,
-}: AgentModel): string {
+/** Whether an agent.ts in the generated shape uses the session budget from `./limits`. */
+export function usesSessionLimits(source: string): boolean {
+  return GENERATED_SHAPE.exec(source)?.groups?.limitsKey !== undefined;
+}
+
+/**
+ * agent.ts in eve's generated shape, with this model, fallbacks and reasoning,
+ * and the session budget from `./limits` when `limits` is set.
+ */
+export function writeAgentModel(
+  { fallbacks = [], model, reasoning }: AgentModel,
+  { limits = false }: { readonly limits?: boolean } = {}
+): string {
   for (const id of [model, ...fallbacks]) {
     if (!isModelId(id)) {
       throw new Error(`"${id}" isn't a provider/model id.`);
@@ -120,5 +136,7 @@ export function writeAgentModel({
   const options = fallbacks.length > 0 ? fallbacksBlock(fallbacks) : "";
   const reasoningLine =
     reasoning === undefined ? "" : `  reasoning: "${reasoning}",\n`;
-  return `import { defineAgent } from "eve";\n\nexport default defineAgent({\n  model: "${model}",\n${options}${reasoningLine}});\n`;
+  const limitsImport = limits ? 'import { limits } from "./limits";\n' : "";
+  const limitsKey = limits ? "  limits,\n" : "";
+  return `import { defineAgent } from "eve";\n${limitsImport}\nexport default defineAgent({\n${limitsKey}  model: "${model}",\n${options}${reasoningLine}});\n`;
 }
