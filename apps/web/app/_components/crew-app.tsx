@@ -1,0 +1,195 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useCallback, useState } from "react";
+import { PromptInputProvider } from "@/components/ai-elements/prompt-input";
+import type { MascotMood } from "@/components/mascot";
+import { authClient } from "@/lib/auth-client";
+import { useChatHistory } from "@/lib/chat-history";
+import { CREW, type CrewMember } from "@/lib/crew.generated";
+import { faviconFor, useFavicon } from "@/lib/favicon";
+import { useIsPhone } from "@/lib/use-phone";
+import { signOutOfPassword } from "../login/actions";
+import { type Account, ownerOf } from "./account";
+import { ConnectionsDialog, type ConnectorSummary } from "./connections-dialog";
+import { CrewChat } from "./crew-chat";
+import { CrewSidebar, MobileCrewList } from "./crew-list";
+import { MemberConfigDialog } from "./member-config-dialog";
+import { PendingChangesDialog } from "./pending-changes-dialog";
+
+type MemberDialogMode =
+  | { readonly kind: "edit"; readonly memberId: string }
+  | { readonly kind: "new" };
+
+/**
+ * The dashboard: the crew list and, when a member is selected, its chat. Ported
+ * from lopsi-bot's App.tsx; wide screens show both, phones one at a time.
+ */
+export function CrewApp({
+  account,
+  changes,
+  connectors,
+  memberId,
+  sessionId,
+}: {
+  readonly account: Account;
+  /** Whether configuration by pull request is possible; absent in local development. */
+  readonly changes?: { readonly available: boolean; readonly reason?: string };
+  /** The configured connectors, names only. */
+  readonly connectors: readonly ConnectorSummary[];
+  readonly memberId?: string;
+  readonly sessionId?: string;
+}) {
+  const router = useRouter();
+  const phone = useIsPhone();
+  const owner = ownerOf(account);
+  const history = useChatHistory(owner);
+  const [moods, setMoods] = useState<Record<string, MascotMood>>({});
+  const [connectionsOpen, setConnectionsOpen] = useState(false);
+  const [memberDialog, setMemberDialog] = useState<MemberDialogMode | null>(
+    null
+  );
+  const [pendingOpen, setPendingOpen] = useState(false);
+  const member = CREW.find((candidate) => candidate.id === memberId);
+
+  const moodOf = (candidate: CrewMember): MascotMood =>
+    moods[candidate.id] ?? "idle";
+  const onMood = useCallback(
+    (mood: MascotMood) => {
+      if (memberId !== undefined) {
+        setMoods((current) =>
+          current[memberId] === mood
+            ? current
+            : { ...current, [memberId]: mood }
+        );
+      }
+    },
+    [memberId]
+  );
+  useFavicon(
+    faviconFor(
+      CREW.map((m) => ({ ...m, kind: m.mascot })),
+      (m) => moodOf(m),
+      member?.id
+    )
+  );
+
+  const onSignOut = signOutFor(account);
+
+  const listProps = {
+    account,
+    crew: CREW,
+    history,
+    moodOf,
+    selectedId: member?.id,
+    ...(onSignOut ? { onSignOut } : {}),
+    ...(connectors.length > 0
+      ? { onConnections: () => setConnectionsOpen(true) }
+      : {}),
+    ...(changes
+      ? {
+          changes: {
+            ...changes,
+            onNewMember: () => setMemberDialog({ kind: "new" }),
+            onPendingChanges: () => setPendingOpen(true),
+          },
+        }
+      : {}),
+  };
+
+  const chat =
+    member === undefined ? null : (
+      // A new provider and chat per member and session: eve's hook must remount when either changes.
+      <PromptInputProvider key={`${member.id}:${sessionId ?? "new"}`}>
+        <CrewChat
+          account={account}
+          history={history[member.id]}
+          member={member}
+          onMood={onMood}
+          owner={owner}
+          {...(changes?.available
+            ? {
+                onEdit: () =>
+                  setMemberDialog({ kind: "edit", memberId: member.id }),
+              }
+            : {})}
+          {...(phone ? { onBack: () => router.push("/") } : {})}
+          {...(sessionId === undefined ? {} : { sessionId })}
+        />
+      </PromptInputProvider>
+    );
+
+  const connectionsDialog = (
+    <>
+      {connectors.length > 0 ? (
+        <ConnectionsDialog
+          account={account}
+          connectors={connectors}
+          onOpenChange={setConnectionsOpen}
+          open={connectionsOpen}
+        />
+      ) : null}
+      {changes?.available ? (
+        <>
+          <MemberConfigDialog
+            mode={memberDialog ?? { kind: "new" }}
+            onOpenChange={(next) => !next && setMemberDialog(null)}
+            open={memberDialog !== null}
+          />
+          <PendingChangesDialog
+            onOpenChange={setPendingOpen}
+            open={pendingOpen}
+          />
+        </>
+      ) : null}
+    </>
+  );
+
+  if (phone) {
+    return (
+      <>
+        {chat ?? <MobileCrewList {...listProps} />}
+        {connectionsDialog}
+      </>
+    );
+  }
+
+  return (
+    <div className="bg-background flex min-h-svh flex-wrap">
+      {connectionsDialog}
+      <CrewSidebar {...listProps} />
+      {chat ?? (
+        <main className="flex h-svh min-h-[640px] min-w-0 flex-[999_1_560px] flex-col items-center justify-center gap-2 p-8 text-center">
+          <h1 className="text-base font-semibold">
+            {CREW.length === 0
+              ? "No crew yet"
+              : "Choose someone from your crew"}
+          </h1>
+          <p className="text-muted-foreground max-w-sm text-sm">
+            {CREW.length === 0
+              ? "Add an agent under agents/<name>/ and run pnpm crew."
+              : "Each crew member is an eve agent with its own instructions and tools."}
+          </p>
+        </main>
+      )}
+    </div>
+  );
+}
+
+/** Signing out of the current mode; nothing to sign out of in local development. */
+function signOutFor(account: Account): (() => void) | undefined {
+  if (account.kind === "vercel") {
+    return () => {
+      authClient
+        .signOut({
+          fetchOptions: { onSuccess: () => window.location.assign("/") },
+        })
+        .catch(() => undefined);
+    };
+  }
+  if (account.kind === "password") {
+    return () => {
+      signOutOfPassword().catch(() => undefined);
+    };
+  }
+}

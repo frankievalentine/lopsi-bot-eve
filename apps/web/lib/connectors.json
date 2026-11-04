@@ -1,0 +1,23 @@
+[
+  {
+    "id": "linear",
+    "name": "Linear",
+    "description": "Linear workspace: search and update issues, projects, cycles, and comments.",
+    "url": "https://mcp.linear.app/mcp",
+    "variable": "LINEAR_CONNECTOR"
+  },
+  {
+    "id": "notion",
+    "name": "Notion",
+    "description": "Notion workspace: search and edit pages and databases.",
+    "url": "https://mcp.notion.com/mcp",
+    "variable": "NOTION_CONNECTOR"
+  },
+  {
+    "id": "sentry",
+    "name": "Sentry",
+    "description": "Sentry: investigate errors, issues, and releases in your projects.",
+    "url": "https://mcp.sentry.dev/mcp",
+    "variable": "SENTRY_CONNECTOR"
+  }
+]
