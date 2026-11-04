@@ -1,7 +1,7 @@
 "use client";
 
 import { ExternalLinkIcon, GitPullRequestIcon } from "lucide-react";
-import { type FormEvent, useEffect, useId, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { Mascot, type MascotKind } from "@/components/mascot";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +24,12 @@ import {
   proposeMemberEdit,
   proposeNewMember,
 } from "./config-actions";
+import {
+  FallbackPicker,
+  type ModelOption,
+  ModelPicker,
+  ReasoningSelect,
+} from "./model-picker";
 
 /** Ported from lopsi-bot's edit-agent-dialog.tsx and new-agent-dialog.tsx. */
 
@@ -34,15 +40,6 @@ const KINDS: MascotKind[] = [
   "purser",
   "navigator",
   "signal",
-];
-const REASONING: readonly ReasoningLevel[] = [
-  "provider-default",
-  "none",
-  "minimal",
-  "low",
-  "medium",
-  "high",
-  "xhigh",
 ];
 
 const NEW_INSTRUCTIONS = `# Identity
@@ -59,8 +56,7 @@ type Mode =
   | { readonly kind: "new" };
 
 interface Form {
-  /** Fallback model ids, comma-separated. */
-  readonly fallbacks: string;
+  readonly fallbacks: readonly string[];
   readonly id: string;
   readonly instructions: string;
   readonly mascot: MascotKind;
@@ -73,7 +69,7 @@ interface Form {
 }
 
 const EMPTY_FORM: Form = {
-  fallbacks: "",
+  fallbacks: [],
   id: "",
   instructions: NEW_INSTRUCTIONS,
   mascot: "lookout",
@@ -87,7 +83,7 @@ const EMPTY_FORM: Form = {
 
 function formOf(config: MemberConfig): Form {
   return {
-    fallbacks: (config.model?.fallbacks ?? []).join(", "),
+    fallbacks: config.model?.fallbacks ?? [],
     id: "",
     instructions: config.instructions ?? "",
     mascot: config.crew.mascot,
@@ -108,10 +104,7 @@ function configOf(form: Form, from: MemberConfig | undefined): MemberConfig {
     .filter(Boolean);
   const order = form.order.trim() === "" ? undefined : Number(form.order);
   const canEditModel = from === undefined || from.model !== undefined;
-  const fallbacks = form.fallbacks
-    .split(",")
-    .map((id) => id.trim())
-    .filter(Boolean);
+  const fallbacks = form.fallbacks.filter((id) => id !== form.model.trim());
   return {
     crew: {
       mascot: form.mascot,
@@ -198,11 +191,6 @@ function requestChange(
   return proposeMemberEdit(memberId, from, configOf(form, from));
 }
 
-interface ModelOption {
-  readonly id: string;
-  readonly name: string;
-}
-
 type Setter = <K extends keyof Form>(key: K) => (value: Form[K]) => void;
 
 interface FieldsProps {
@@ -221,10 +209,13 @@ interface FieldsProps {
 export function MemberConfigDialog({
   mode,
   onOpenChange,
+  onPullRequest,
   open,
 }: {
   readonly mode: Mode;
   readonly onOpenChange: (open: boolean) => void;
+  /** Called once the change's pull request is open. */
+  readonly onPullRequest?: () => void;
   readonly open: boolean;
 }) {
   const memberId = mode.kind === "edit" ? mode.memberId : undefined;
@@ -254,6 +245,7 @@ export function MemberConfigDialog({
       const result = await requestChange(memberId, from, form);
       if (result.ok) {
         setPull(result.pull);
+        onPullRequest?.();
       } else {
         setSubmitError(result.error);
       }
@@ -434,7 +426,6 @@ function MemberFields({ editing, form, from, models, set }: FieldsProps) {
 
 /** Model and reasoning, unless agent.ts was edited by hand. */
 function ModelFields({ editing, form, from, models, set }: FieldsProps) {
-  const modelListId = useId();
   if (editing && from?.model === undefined) {
     return (
       <p className="bg-muted/40 text-muted-foreground rounded-lg border px-3 py-2.5 text-sm">
@@ -446,53 +437,32 @@ function ModelFields({ editing, form, from, models, set }: FieldsProps) {
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
-        <label className="flex flex-col gap-1.5 text-sm">
+        <div className="flex min-w-0 flex-col gap-1.5 text-sm">
           <span className="font-medium">Model</span>
-          <Input
-            list={modelListId}
-            onChange={(e) => set("model")(e.target.value)}
-            placeholder="provider/model, from AI Gateway"
+          <ModelPicker
+            models={models}
+            onChange={set("model")}
             required={!editing}
             value={form.model}
           />
-          <datalist id={modelListId}>
-            {models.map((model) => (
-              <option key={model.id} value={model.id}>
-                {model.name}
-              </option>
-            ))}
-          </datalist>
-        </label>
-        <label className="flex flex-col gap-1.5 text-sm">
+        </div>
+        <div className="flex flex-col gap-1.5 text-sm">
           <span className="font-medium">Reasoning</span>
-          <select
-            className="h-8 rounded-lg border bg-transparent px-2.5 text-sm"
-            onChange={(e) =>
-              set("reasoning")(e.target.value as Form["reasoning"])
-            }
-            value={form.reasoning}
-          >
-            <option value="">Not set</option>
-            {REASONING.map((level) => (
-              <option key={level} value={level}>
-                {level}
-              </option>
-            ))}
-          </select>
-        </label>
+          <ReasoningSelect onChange={set("reasoning")} value={form.reasoning} />
+        </div>
       </div>
-      <label className="flex flex-col gap-1.5 text-sm">
+      <div className="flex flex-col gap-1.5 text-sm">
         <span className="font-medium">Fallback models</span>
         <span className="text-muted-foreground text-xs">
-          Tried in order when the model fails on every provider.
-          Comma-separated, up to three.
+          Tried in order when the model fails on every provider. Up to three.
         </span>
-        <Input
-          onChange={(e) => set("fallbacks")(e.target.value)}
-          placeholder="alibaba/qwen3.7-flash"
+        <FallbackPicker
+          model={form.model}
+          models={models}
+          onChange={set("fallbacks")}
           value={form.fallbacks}
         />
-      </label>
+      </div>
     </>
   );
 }
