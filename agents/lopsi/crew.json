@@ -1,0 +1,11 @@
+{
+  "$schema": "../../scripts/crew.schema.json",
+  "name": "Lopsi",
+  "role": "General helper",
+  "mascot": "skipper",
+  "suggestions": [
+    "What can you help me with?",
+    "Find the latest news about eve",
+    "Summarize a web page for me"
+  ]
+}

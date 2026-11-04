@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Crew member",
+  "description": "How the dashboard shows one eve agent: agents/<name>/crew.json. eve ignores this file.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "mascot"],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "name": {
+      "description": "Display name in the crew list and chat header.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40
+    },
+    "role": {
+      "description": "One line on what this crew member does.",
+      "type": "string",
+      "maxLength": 80
+    },
+    "mascot": {
+      "description": "Which Lopsi mascot represents it.",
+      "enum": [
+        "skipper",
+        "lookout",
+        "purser",
+        "navigator",
+        "deckhand",
+        "signal"
+      ]
+    },
+    "suggestions": {
+      "description": "Starter prompts shown above the composer.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 120
+      },
+      "maxItems": 4
+    },
+    "order": {
+      "description": "Position in the crew list, lowest first; members without one follow, by directory name.",
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

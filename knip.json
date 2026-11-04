@@ -1,0 +1,28 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreBinaries": ["vercel"],
+  "entry": [
+    "agents/*/agent/**/*.ts",
+    "agents/*/evals/**/*.ts",
+    "vercel.ts",
+    "scripts/*.mjs"
+  ],
+  "project": ["agents/**/*.ts", "apps/web/**/*.{ts,tsx}", "*.ts"],
+  "ignore": [
+    "apps/web/components/ai-elements/**",
+    "apps/web/components/crew-icon.tsx",
+    "apps/web/components/ui/**",
+    "apps/web/lib/favicon.tsx"
+  ],
+  "next": {
+    "config": ["apps/web/next.config.ts"],
+    "entry": ["apps/web/app/**/{page,layout,route,icon,apple-icon}.{ts,tsx}"]
+  },
+  "ignoreDependencies": [
+    "@fontsource-variable/geist",
+    "@fontsource-variable/geist-mono",
+    "@tailwindcss/postcss",
+    "tailwindcss",
+    "tw-animate-css"
+  ]
+}

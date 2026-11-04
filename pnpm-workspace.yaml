@@ -1,5 +1,15 @@
-minimumReleaseAge: 0
-minimumReleaseAgeStrict: true
+minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  - "@ai-sdk/*"
+  - "@vercel/*"
+  - "@workflow/*"
+  - ai
+  - eve
+  - nitro
+  - workflow
 allowBuilds:
   esbuild: true
   sharp: false
+ignoredOptionalDependencies:
+  - "@mongodb-js/zstd"
+  - "node-liblzma"
