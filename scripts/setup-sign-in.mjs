@@ -32,6 +32,8 @@ const TARGETS = ["production", "preview"];
 const CLIENT_ID = "VERCEL_APP_CLIENT_ID";
 const CLIENT_SECRET = "VERCEL_APP_CLIENT_SECRET";
 const AUTH_SECRET = "BETTER_AUTH_SECRET";
+/** The private Blob store that keeps each chat to the person who started it. */
+const OWNER_STORE_KEYS = ["BLOB_STORE_ID", "BLOB_READ_WRITE_TOKEN"];
 
 function findApp(idOrSlug) {
   try {
@@ -192,9 +194,6 @@ function configureSignIn(project, configuredIds, missingTargets) {
     console.log(`  Set ${write.key} (${write.target.join(", ")})`);
   }
 }
-
-/** The private Blob store that keeps each chat to the person who started it. */
-const OWNER_STORE_KEYS = ["BLOB_STORE_ID", "BLOB_READ_WRITE_TOKEN"];
 
 /**
  * Creates and connects the chat owner store when production and preview have
