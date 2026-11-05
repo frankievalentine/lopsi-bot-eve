@@ -126,7 +126,7 @@ export async function planRemoval(
 
   const connectors = await allPages<ConnectorRow>(
     call,
-    `/v2/connect/projects/${encodeURIComponent(projectId)}/connectors`,
+    `/v2/connect/connectors?projectId=${encodeURIComponent(projectId)}`,
     "connectors"
   );
   const withUse = await Promise.all(
