@@ -58,7 +58,7 @@ async function originOf(): Promise<string> {
 
 /** The demo's example setup: nothing here is read from a deployment. */
 function demoSettings() {
-  const active = new Set(["linear", "notion", "resend"]);
+  const active = new Set(["linear", "notion"]);
   return {
     ok: true as const,
     setups: Object.fromEntries(
