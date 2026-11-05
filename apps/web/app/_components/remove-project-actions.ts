@@ -18,6 +18,7 @@ import {
 
 /** Something the app can't remove, for the person to do afterward. */
 export interface ManualStep {
+  readonly hint: string;
   readonly href?: string;
   readonly label: string;
 }
@@ -63,59 +64,67 @@ function manualSteps(plan: RemovalPlan): readonly ManualStep[] {
   const channels = channelCatalog.filter((entry) =>
     isConfigured(entry.env.map((variable) => variable.name))
   );
+  const storage =
+    "https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fstores&title=Go+to+Storage";
   return [
     ...(repository
       ? [
           {
+            hint: `${repository.owner}/${repository.repo}, at the bottom of its settings`,
             href: `https://github.com/${repository.owner}/${repository.repo}/settings`,
-            label: `Delete the GitHub repository ${repository.owner}/${repository.repo}, at the bottom of its settings`,
+            label: "Delete the GitHub Repository",
           },
         ]
       : []),
     ...(process.env.GITHUB_CONNECTOR
       ? [
           {
+            hint: "The app that opened pull requests",
             href: "https://github.com/settings/installations",
-            label: "Uninstall its GitHub App",
+            label: "Uninstall the GitHub App",
           },
         ]
       : []),
     ...(process.env.VERCEL_APP_CLIENT_ID
       ? [
           {
+            hint: "Used for sign-in; it's in team settings",
             href: "https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fsettings&title=Go+to+Team+Settings",
-            label: "Delete its Vercel App, used for sign-in, in team settings",
+            label: "Delete the Vercel App",
           },
         ]
       : []),
     ...(plan.limited
       ? [
           {
-            href: "https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fstores&title=Go+to+Storage",
-            label:
-              "Check Storage for its stores, including any chat history, which may keep billing until you delete them",
+            hint: "Your token couldn't reach them. They may include chat history, and may keep billing.",
+            href: storage,
+            label: "Check for Stores",
           },
           {
+            hint: "Your token couldn't reach them.",
             href: "https://vercel.com/d?to=/%5Bteam%5D/~/connect&title=Go+to+Connect",
-            label: "Check Vercel Connect for its connectors",
+            label: "Check for Connectors",
           },
         ]
       : []),
     ...plan.stores.map((name) => ({
-      href: "https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fstores&title=Go+to+Storage",
-      label: `Delete the store ${name}, which may keep billing until you do`,
+      hint: `${name}, which may keep billing until you do`,
+      href: storage,
+      label: "Delete the Store",
     })),
     ...(process.env.RESEND_API_KEY
       ? [
           {
+            hint: "Webhooks and API key, and the receiving domain if nothing else uses it",
             href: "https://resend.com/webhooks",
-            label:
-              "Delete its webhooks and API key in Resend, and its receiving domain if nothing else uses it",
+            label: "Clean Up Resend",
           },
         ]
       : []),
     ...channels.map((entry) => ({
-      label: `Remove the webhook in your ${entry.name} dashboard`,
+      hint: `In your ${entry.name} dashboard`,
+      label: `Remove the ${entry.name} Webhook`,
     })),
   ];
 }

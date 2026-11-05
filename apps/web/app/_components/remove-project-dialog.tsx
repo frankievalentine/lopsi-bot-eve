@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLinkIcon } from "lucide-react";
+import { CheckIcon, ExternalLinkIcon, XIcon } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { RemovalPlan, RemovalStep } from "@/lib/project-removal";
+import { cn } from "@/lib/utils";
 import {
   type ManualStep,
   previewRemoval,
@@ -23,7 +24,11 @@ const TOKENS = "https://vercel.com/account/settings/tokens";
 const GUIDE =
   "https://github.com/frankievalentine/lopsi-bot-eve/blob/main/docs/removing.md";
 
-const KINDS = { "blob-store": "Chat history store", connector: "Connector" };
+const KINDS = {
+  "blob-store": "Chat history store",
+  connector: "Connector",
+  project: "Project and its deployments",
+};
 
 type Stage =
   | { readonly kind: "token" }
@@ -42,30 +47,38 @@ function Heading({ children }: { readonly children: string }) {
   return <h3 className="text-sm font-medium">{children}</h3>;
 }
 
+function ManualRow({ step }: { readonly step: ManualStep }) {
+  return (
+    <li className="flex items-center justify-between gap-3 px-3 py-2.5">
+      <span className="min-w-0">
+        <span className="block text-sm">{step.label}</span>
+        <span className="text-muted-foreground block text-xs text-pretty">
+          {step.hint}
+        </span>
+      </span>
+      {step.href ? (
+        <a
+          aria-label={`Open: ${step.label}`}
+          className="inline-flex shrink-0 items-center gap-1 text-xs underline-offset-4 hover:underline"
+          href={step.href}
+          rel="noreferrer"
+          target="_blank"
+        >
+          Open
+          <ExternalLinkIcon aria-hidden="true" className="size-3" />
+        </a>
+      ) : null}
+    </li>
+  );
+}
+
 function ManualList({ steps }: { readonly steps: readonly ManualStep[] }) {
   return steps.length === 0 ? null : (
-    <section className="space-y-1.5">
+    <section className="space-y-2">
       <Heading>Left for You</Heading>
-      <ul className="text-muted-foreground list-disc space-y-1 pl-4 text-xs">
+      <ul className="divide-y rounded-lg border">
         {steps.map((step) => (
-          <li key={step.label}>
-            {step.href ? (
-              <a
-                className="text-foreground inline-flex items-baseline gap-1 underline-offset-4 hover:underline"
-                href={step.href}
-                rel="noreferrer"
-                target="_blank"
-              >
-                {step.label}
-                <ExternalLinkIcon
-                  aria-hidden="true"
-                  className="size-3 shrink-0 self-center"
-                />
-              </a>
-            ) : (
-              step.label
-            )}
-          </li>
+          <ManualRow key={step.label + step.hint} step={step} />
         ))}
       </ul>
     </section>
@@ -288,40 +301,91 @@ function ReviewStep({
   );
 }
 
+function StepRow({ step }: { readonly step: RemovalStep }) {
+  return (
+    <li className="flex items-center justify-between gap-3 px-3 py-2.5">
+      <span className="min-w-0">
+        <span className="block truncate text-sm">{step.name}</span>
+        <span
+          className={cn(
+            "block text-xs",
+            step.error ? "text-destructive" : "text-muted-foreground"
+          )}
+        >
+          {step.error ?? KINDS[step.kind]}
+        </span>
+      </span>
+      {step.ok ? (
+        <CheckIcon
+          aria-label="Removed"
+          className="text-online size-4 shrink-0"
+        />
+      ) : (
+        <XIcon
+          aria-label="Failed"
+          className="text-destructive size-4 shrink-0"
+        />
+      )}
+    </li>
+  );
+}
+
 function DoneStep({
+  onClose,
   stage,
 }: {
+  readonly onClose: () => void;
   readonly stage: Extract<Stage, { kind: "done" }>;
 }) {
-  const failed = stage.steps.find((step) => !step.ok);
+  const failed = stage.steps.some((step) => !step.ok);
   return (
     <div className="space-y-4" role="status">
-      <section className="space-y-1.5">
-        <Heading>
-          {failed ? "Stopped Before Finishing" : "Project Removed"}
-        </Heading>
-        <ul className="space-y-1 text-sm">
-          {stage.steps.map((step) => (
-            <li key={step.name}>
-              {step.ok ? "Removed" : "Failed"}: {step.name}
-              {step.error ? (
-                <span className="text-destructive block text-xs">
-                  {step.error}
-                </span>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-        {failed ? (
-          <p className="text-muted-foreground text-xs">
-            The project is removed last, so it's still running unless it's the
-            one that failed. Close this and try again.
-          </p>
-        ) : null}
-      </section>
-      {failed ? null : <ManualList steps={stage.manual} />}
+      <ul className="divide-y rounded-lg border">
+        {stage.steps.map((step) => (
+          <StepRow key={step.name} step={step} />
+        ))}
+      </ul>
+      {failed ? null : (
+        <ManualList
+          steps={[
+            ...stage.manual,
+            {
+              hint: "You won't need the one you pasted here again",
+              href: TOKENS,
+              label: "Delete Your Token",
+            },
+          ]}
+        />
+      )}
+      <DialogFooter>
+        <Button onClick={onClose}>{failed ? "Close" : "Done"}</Button>
+      </DialogFooter>
     </div>
   );
+}
+
+/** The dialog's heading, which follows how far the removal has got. */
+function headingOf(stage: Stage): {
+  readonly description: string;
+  readonly title: string;
+} {
+  if (stage.kind !== "done") {
+    return {
+      description:
+        "Removes it from Vercel, with what setup made for it. Anything another project uses stays.",
+      title: "Remove This Project",
+    };
+  }
+  return stage.steps.some((step) => !step.ok)
+    ? {
+        description:
+          "The project goes last, so this site still works unless the project is what failed. Close this and try again.",
+        title: "Removal Stopped",
+      }
+    : {
+        description: "It's gone from Vercel, and this site no longer works.",
+        title: "Project Removed",
+      };
 }
 
 /**
@@ -337,6 +401,7 @@ export function RemoveProjectDialog({
 }) {
   const [stage, setStage] = useState<Stage>({ kind: "token" });
   const [token, setToken] = useState("");
+  const heading = headingOf(stage);
 
   useEffect(() => {
     if (!open) {
@@ -349,11 +414,8 @@ export function RemoveProjectDialog({
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent className="max-h-[85svh] overflow-y-auto overscroll-contain sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Remove This Project</DialogTitle>
-          <DialogDescription>
-            Removes it from Vercel, with what setup made for it. Anything
-            another project uses stays.
-          </DialogDescription>
+          <DialogTitle>{heading.title}</DialogTitle>
+          <DialogDescription>{heading.description}</DialogDescription>
         </DialogHeader>
         {stage.kind === "token" ? (
           <TokenStep
@@ -366,7 +428,9 @@ export function RemoveProjectDialog({
         {stage.kind === "review" ? (
           <ReviewStep onDone={setStage} stage={stage} token={token} />
         ) : null}
-        {stage.kind === "done" ? <DoneStep stage={stage} /> : null}
+        {stage.kind === "done" ? (
+          <DoneStep onClose={() => onOpenChange(false)} stage={stage} />
+        ) : null}
       </DialogContent>
     </Dialog>
   );

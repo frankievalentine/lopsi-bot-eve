@@ -28,6 +28,7 @@ export interface RemovalPlan {
 
 export interface RemovalStep {
   readonly error?: string;
+  readonly kind: RemovalItem["kind"] | "project";
   readonly name: string;
   readonly ok: boolean;
 }
@@ -236,9 +237,14 @@ export async function runRemoval(
       // One at a time, to stop at the first failure.
       // biome-ignore lint/performance/noAwaitInLoops: in order, on purpose.
       await call(pathOf(item), { method: "DELETE" });
-      steps.push({ name: item.name, ok: true });
+      steps.push({ kind: item.kind, name: item.name, ok: true });
     } catch (error) {
-      steps.push({ error: messageOf(error), name: item.name, ok: false });
+      steps.push({
+        error: messageOf(error),
+        kind: item.kind,
+        name: item.name,
+        ok: false,
+      });
       return steps;
     }
   }
@@ -246,9 +252,14 @@ export async function runRemoval(
     await call(`/v9/projects/${encodeURIComponent(projectId)}`, {
       method: "DELETE",
     });
-    steps.push({ name: plan.projectName, ok: true });
+    steps.push({ kind: "project", name: plan.projectName, ok: true });
   } catch (error) {
-    steps.push({ error: messageOf(error), name: plan.projectName, ok: false });
+    steps.push({
+      error: messageOf(error),
+      kind: "project",
+      name: plan.projectName,
+      ok: false,
+    });
   }
   return steps;
 }
