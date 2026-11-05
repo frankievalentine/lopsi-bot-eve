@@ -8,7 +8,7 @@ To stop a deployment without losing anything, pause it: in Vercel, open the proj
 
 On a production deployment, open **Settings → General → Remove This Project**:
 
-1. Paste a [Vercel token](https://vercel.com/account/settings/tokens) for the project's team. It's used for this removal only and never stored. Delete it afterward.
+1. Paste a [Vercel token](https://vercel.com/account/settings/tokens). It's used for this removal only and never stored. Delete it afterward. A token for the project's team removes everything below. A token for only this project removes the project, and leaves its stores and connectors for you.
 2. Review what will be removed, and uncheck anything you'd like to keep.
 3. Type the project's name to confirm.
 

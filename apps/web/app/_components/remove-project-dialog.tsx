@@ -137,7 +137,9 @@ function TokenStep({
           >
             Create a token
           </a>{" "}
-          for this project's team, and delete it afterward.
+          for this project's team, and delete it afterward. A token for only
+          this project removes the project, but leaves its stores and
+          connectors.
         </span>
       </label>
       <ErrorLine error={error} />
@@ -241,6 +243,12 @@ function ReviewStep({
           ))}
         </ul>
       </section>
+      {plan.limited ? (
+        <p className="bg-muted/40 text-muted-foreground rounded-lg border px-3 py-2.5 text-xs">
+          This token can only reach the project, so any stores and connectors
+          stay. To remove those too, go back and use a token for the team.
+        </p>
+      ) : null}
       {plan.kept.length > 0 ? (
         <section className="space-y-1.5">
           <Heading>Kept: Other Projects Use These</Heading>

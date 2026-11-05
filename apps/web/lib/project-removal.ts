@@ -18,6 +18,8 @@ export interface RemovalItem {
 export interface RemovalPlan {
   /** Not removed: another project uses them too. */
   readonly kept: readonly string[];
+  /** The token reaches only the project, so its stores and connectors stay. */
+  readonly limited: boolean;
   readonly projectName: string;
   readonly removable: readonly RemovalItem[];
   /** Connected stores with no API to remove them one at a time, like Upstash. */
@@ -107,14 +109,11 @@ async function allPages<T>(
   return rows;
 }
 
-/** What removing this project would remove, keep, and leave to the person. */
-export async function planRemoval(
+/** What's connected to the project, which takes a token for the whole team. */
+async function teamPlan(
   call: VercelCall,
   projectId: string
-): Promise<RemovalPlan> {
-  const project = (await call(
-    `/v9/projects/${encodeURIComponent(projectId)}`
-  )) as { readonly name: string };
+): Promise<Pick<RemovalPlan, "kept" | "removable" | "stores">> {
   const { stores = [] } = (await call("/v1/storage/stores")) as {
     readonly stores?: readonly StoreRow[];
   };
@@ -148,7 +147,6 @@ export async function planRemoval(
         .filter(({ projects }) => projects.length > 1)
         .map(({ connector }) => nameOf(connector)),
     ],
-    projectName: project.name,
     removable: [
       // Connectors first: a failure then hasn't cost the chat history.
       ...withUse
@@ -174,6 +172,42 @@ export async function planRemoval(
       .filter((store) => store.type !== "blob" && !isShared(store))
       .map((store) => store.name),
   };
+}
+
+const isDenied = (error: unknown) =>
+  error instanceof VercelCallError &&
+  (error.status === 401 || error.status === 403);
+
+/**
+ * What removing this project would remove, keep, and leave to the person. A
+ * token for only this project can remove the project, but can't see the team's
+ * stores and connectors, so those are left to the person.
+ */
+export async function planRemoval(
+  call: VercelCall,
+  projectId: string
+): Promise<RemovalPlan> {
+  const project = (await call(
+    `/v9/projects/${encodeURIComponent(projectId)}`
+  )) as { readonly name: string };
+  try {
+    return {
+      ...(await teamPlan(call, projectId)),
+      limited: false,
+      projectName: project.name,
+    };
+  } catch (error) {
+    if (!isDenied(error)) {
+      throw error;
+    }
+    return {
+      kept: [],
+      limited: true,
+      projectName: project.name,
+      removable: [],
+      stores: [],
+    };
+  }
 }
 
 function pathOf(item: RemovalItem): string {

@@ -51,7 +51,7 @@ async function allowed(): Promise<boolean> {
 function explain(error: unknown): string {
   if (error instanceof VercelCallError) {
     return error.status === 401 || error.status === 403 || error.status === 404
-      ? "That token can't manage this project. Check that it's for this project's team, then try again."
+      ? "That token can't reach this project. Use a token for this project's team, or for this project."
       : "Vercel didn't accept that. Try again in a moment.";
   }
   return "Couldn't reach Vercel. Try again in a moment.";
@@ -85,6 +85,19 @@ function manualSteps(plan: RemovalPlan): readonly ManualStep[] {
           {
             href: "https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fsettings&title=Go+to+Team+Settings",
             label: "Delete its Vercel App, used for sign-in, in team settings",
+          },
+        ]
+      : []),
+    ...(plan.limited
+      ? [
+          {
+            href: "https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fstores&title=Go+to+Storage",
+            label:
+              "Check Storage for its stores, including any chat history, which may keep billing until you delete them",
+          },
+          {
+            href: "https://vercel.com/d?to=/%5Bteam%5D/~/connect&title=Go+to+Connect",
+            label: "Check Vercel Connect for its connectors",
           },
         ]
       : []),
