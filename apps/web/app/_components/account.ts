@@ -8,6 +8,7 @@ export type Account =
       readonly name: string;
     }
   | { readonly kind: "password" }
+  | { readonly kind: "demo" }
   | { readonly kind: "open" };
 
 /** The key a person's browser-stored chat list is kept under. */
@@ -17,6 +18,8 @@ export function ownerOf(account: Account): string {
       return `vercel:${account.id}`;
     case "password":
       return "operator";
+    case "demo":
+      return "demo";
     default:
       return "local";
   }

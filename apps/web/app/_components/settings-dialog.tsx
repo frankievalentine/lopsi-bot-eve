@@ -21,14 +21,18 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AccessMode } from "@/lib/access";
 import type { MemberSetup, MemberSetupResult } from "@/lib/agent-info";
-import { CREW, type CrewMember } from "@/lib/crew.generated";
+import { CREW, type CrewMember } from "@/lib/crew";
 import { cn } from "@/lib/utils";
 import { loadSettings, type SettingsStatus } from "./settings-actions";
 
 const ACCESS: Record<
-  AccessMode,
+  AccessMode | "demo",
   { readonly hint: string; readonly label: string }
 > = {
+  demo: {
+    hint: "Open to everyone, with prewritten replies and no model.",
+    label: "Demo",
+  },
   incomplete: {
     hint: "Sign-in is set up, but its chat store is missing, so nobody can sign in.",
     label: "Needs Setup",
@@ -185,7 +189,9 @@ function GeneralSection({
     <Group>
       <Row hint={access.hint} label="Access">
         <span className="text-foreground">{access.label}</span>
-        {status.access === "vercel" || status.access === "open" ? null : (
+        {status.access === "vercel" ||
+        status.access === "open" ||
+        status.access === "demo" ? null : (
           <External href={`${GUIDE}/access.md`}>Guide</External>
         )}
       </Row>

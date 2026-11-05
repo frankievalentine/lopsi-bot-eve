@@ -6,7 +6,7 @@ import {
   loadTranscript,
   type Transcript,
 } from "@/lib/chat-store";
-import { CREW } from "@/lib/crew.generated";
+import { CREW } from "@/lib/crew";
 import { isSessionOwnedBy } from "@/lib/session-owners";
 import { CrewApp } from "./crew-app";
 import { dashboardFeatures, pageAccess } from "./page-access";

@@ -15,6 +15,10 @@ pnpm dev:all
 
 To require the password locally, set it in `.env.local` (see `.env.example`).
 
+## Demo mode
+
+Build with `NEXT_PUBLIC_LOPSI_DEMO=1` for a public demo: the dashboard opens to everyone with an example crew and prewritten replies, played in the browser as eve events, so the real chat renders them. No agent or model is called, so it can't spend AI credit. Set the variable on a separate Vercel project with no `LOPSI_ACCESS_PASSWORD`, which leaves its agents locked.
+
 ## Checks
 
 ```sh

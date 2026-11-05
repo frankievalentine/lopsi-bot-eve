@@ -3,6 +3,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import { MAX_CHATS, mergeHistory } from "./chat-history-merge";
 import type { ChatRecord } from "./chat-store";
+import { plainReply } from "./reply-preview";
 
 /**
  * Each crew member's chats, kept in this browser's localStorage, per signed-in
@@ -159,7 +160,7 @@ export function recordReply(
     chats: member.chats.map((chat) =>
       chat.sessionId === sessionId ? { ...chat, updatedAt: now } : chat
     ),
-    preview: shorten(reply, 100) || member.preview,
+    preview: shorten(plainReply(reply), 100) || member.preview,
     updatedAt: now,
   }));
 }

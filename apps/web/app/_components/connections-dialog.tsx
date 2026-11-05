@@ -71,7 +71,7 @@ export function ConnectionsDialog({
   );
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const canConnect = account.kind !== "open";
+  const canConnect = account.kind !== "open" && account.kind !== "demo";
 
   useEffect(() => {
     if (!(open && canConnect)) {

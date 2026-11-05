@@ -63,7 +63,11 @@ const MemberConfigSchema = z.object({
  */
 async function requester(): Promise<string | undefined> {
   const account = await currentAccount();
-  if (typeof account === "string" || account.kind === "open") {
+  if (
+    typeof account === "string" ||
+    account.kind === "open" ||
+    account.kind === "demo"
+  ) {
     return;
   }
   return account.kind === "vercel"

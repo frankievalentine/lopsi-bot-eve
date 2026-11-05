@@ -17,6 +17,7 @@
 
 import { createHash } from "node:crypto";
 import { BlobNotFoundError, get, list, put } from "@vercel/blob";
+import { plainReply } from "./reply-preview";
 import type { SessionOwner } from "./session-owners";
 
 /** One chat in a person's list. */
@@ -142,7 +143,7 @@ export async function recordChatReply(
   sessionId: string,
   reply: string
 ): Promise<void> {
-  const preview = shorten(reply, 100);
+  const preview = shorten(plainReply(reply), 100);
   if (!preview) {
     return;
   }
