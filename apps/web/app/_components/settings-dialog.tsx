@@ -79,6 +79,9 @@ const CONNECT_LINK =
 /** Crew members per page in the Crew section's picker. */
 const CREW_PAGE_SIZE = 4;
 
+/** Shown under Channels, as its email channel, not as a connector too. */
+const RESEND = "resend";
+
 const TRAILING_PERIOD = /\.$/u;
 
 function Group({
@@ -357,13 +360,15 @@ function IntegrationsSection({
             ) : null}
           </span>
         }
-        integrations={status.catalog.map((entry) => ({
-          active: entry.configured,
-          description: entry.description,
-          guide: `${GUIDE}/integrations.md#connectors`,
-          id: entry.id,
-          name: entry.name,
-        }))}
+        integrations={status.catalog
+          .filter((entry) => entry.id !== RESEND)
+          .map((entry) => ({
+            active: entry.configured,
+            description: entry.description,
+            guide: `${GUIDE}/integrations.md#connectors`,
+            id: entry.id,
+            name: entry.name,
+          }))}
         title="Connectors"
       />
       <IntegrationGroup
