@@ -18,3 +18,7 @@ ignoredOptionalDependencies:
 # otherwise bring a second copy of chat beside the one the adapters share.
 overrides:
   chat: 4.43.0
+  # @vercel/cli-config pins an older zod with a memory exhaustion advisory.
+  zod: 4.6.7
+  # Only a dev tool here, pulled in by better-auth's optional TanStack peer.
+  vite: 8.3.3
