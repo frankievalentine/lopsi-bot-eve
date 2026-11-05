@@ -31,13 +31,37 @@ Then add what you need, from a clone of your repository linked to the project (`
 | `pnpm setup:email` | [Email](docs/integrations.md#email) to and from the crew |
 | `pnpm setup:channel <channel>` | [Messaging channels](docs/integrations.md#channels) |
 
+## What it runs on
+
+| For | It uses | Added by |
+| --- | --- | --- |
+| The crew's models | [AI Gateway](https://vercel.com/docs/ai-gateway) (the free tier works) | Nothing: the deployment's OIDC token |
+| Dashboard pull requests | A [Vercel Connect](https://vercel.com/docs/connect) GitHub App connector | The Deploy button |
+| Sign in with Vercel, private chats, chat history, workspace snapshots | A private [Vercel Blob](https://vercel.com/docs/vercel-blob) store | `pnpm setup:sign-in` |
+| Email and messaging channels | [Upstash for Redis](https://vercel.com/marketplace/upstash), for conversation threads | `pnpm setup:email`, `pnpm setup:channel` |
+
+There's no database to set up: no Neon or Postgres. Starter mode needs nothing beyond the deploy; sign-in sessions are encrypted cookies, and history lives in Blob.
+
+## Stack
+
+| | |
+| --- | --- |
+| Agents | [eve](https://eve.dev) (workspace layout, one agent per crew member), [Vercel Sandbox](https://vercel.com/docs/vercel-sandbox) for each chat's shell |
+| Models | [AI SDK](https://ai-sdk.dev) through [AI Gateway](https://vercel.com/docs/ai-gateway) |
+| Web app | [Next.js](https://nextjs.org) on [Vercel Services](https://vercel.com/docs/services) |
+| Interface | Lopsi Bot's dashboard on [AI Elements](https://ai-sdk.dev/elements), [shadcn/ui](https://ui.shadcn.com) and [Base UI](https://base-ui.com), with Tailwind CSS |
+| Sign-in | [Better Auth](https://better-auth.com) with Sign in with Vercel |
+| Integrations | [Vercel Connect](https://vercel.com/docs/connect) for connectors, [Chat SDK](https://chat-sdk.dev) adapters for email and channels |
+| Storage | [Vercel Blob](https://vercel.com/docs/vercel-blob), [Upstash for Redis](https://vercel.com/marketplace/upstash) |
+
 ## Documentation
 
-- [Access](docs/access.md): starter mode and Sign in with Vercel, who can see a chat, what the crew can reach.
-- [Integrations](docs/integrations.md): connectors, email and messaging channels.
-- [The crew](docs/crew.md): adding members, Settings, changing the crew from the dashboard.
-- [Development](docs/development.md): running locally, checks, tech stack.
-- [Architecture](ARCHITECTURE.md): how it fits together, and the security model.
+- [docs/getting-started.md](docs/getting-started.md): from Deploy to a working crew, step by step.
+- [docs/access.md](docs/access.md): starter mode and Sign in with Vercel, who can see a chat, what the crew can reach.
+- [docs/integrations.md](docs/integrations.md): connectors, email and messaging channels.
+- [docs/crew.md](docs/crew.md): adding crew members, Settings, changing the crew from the dashboard.
+- [docs/development.md](docs/development.md): running locally and checks.
+- [ARCHITECTURE.md](ARCHITECTURE.md): how it fits together, and the security model.
 
 ## License
 

@@ -29,14 +29,4 @@ Evals call real models through AI Gateway, so they need the project linked and i
 
 See [ARCHITECTURE.md](../ARCHITECTURE.md).
 
-## Tech stack
-
-| Layer | Technology |
-| --- | --- |
-| Agent framework | eve (workspace layout) |
-| Frontend framework | Next.js |
-| Sign-in | Better Auth with Sign in with Vercel (production mode) |
-| Interface | Lopsi Bot's dashboard on Base UI, shadcn/ui and AI Elements |
-| Deployment | Vercel Services |
-| Models | Vercel AI Gateway |
-| Sandbox | Vercel Sandbox |
+The stack and what it runs on are listed in the [README](../README.md#stack).
