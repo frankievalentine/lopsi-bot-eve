@@ -79,6 +79,9 @@ const CONNECT_LINK =
 /** Crew members per page in the Crew section's picker. */
 const CREW_PAGE_SIZE = 4;
 
+/** The connector that Resend's card shows as Sending. */
+const RESEND = "resend";
+
 const TRAILING_PERIOD = /\.$/u;
 
 function Group({
@@ -248,12 +251,19 @@ interface Integration {
   readonly name: string;
 }
 
-function IntegrationCard({
-  integration,
+/** A card's frame: a link to set it up, until there's nothing left to set up. */
+function CardFrame({
+  children,
+  done,
+  guide,
+  name,
 }: {
-  readonly integration: Integration;
+  readonly children: ReactNode;
+  readonly done: boolean;
+  readonly guide: string;
+  readonly name: string;
 }) {
-  const { active, description, guide, name } = integration;
+  const frame = "flex items-start gap-3 rounded-lg border p-3 text-left";
   const body = (
     <>
       <span
@@ -262,31 +272,10 @@ function IntegrationCard({
       >
         {name.charAt(0)}
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center justify-between gap-2">
-          <span className="truncate text-sm font-medium">{name}</span>
-          {active ? (
-            <Status active={true} />
-          ) : (
-            <span className="text-muted-foreground shrink-0 text-xs">
-              <span className="group-hover/card:hidden group-focus-visible/card:hidden">
-                Off
-              </span>
-              <span className="text-foreground hidden items-center gap-1 group-hover/card:inline-flex group-focus-visible/card:inline-flex">
-                Set Up
-                <ExternalLinkIcon aria-hidden="true" className="size-3" />
-              </span>
-            </span>
-          )}
-        </span>
-        <span className="text-muted-foreground mt-0.5 line-clamp-2 text-xs text-pretty">
-          {description}
-        </span>
-      </span>
+      <span className="min-w-0 flex-1">{children}</span>
     </>
   );
-  const frame = "flex items-start gap-3 rounded-lg border p-3 text-left";
-  return active ? (
+  return done ? (
     <div className={frame}>{body}</div>
   ) : (
     <a
@@ -301,6 +290,84 @@ function IntegrationCard({
     >
       {body}
     </a>
+  );
+}
+
+/** A card's status, which becomes Set Up on hover or keyboard focus. */
+function SetUpLabel({ children }: { readonly children: string }) {
+  return (
+    <span className="text-muted-foreground shrink-0 text-xs">
+      <span className="group-hover/card:hidden group-focus-visible/card:hidden">
+        {children}
+      </span>
+      <span className="text-foreground hidden items-center gap-1 group-hover/card:inline-flex group-focus-visible/card:inline-flex">
+        Set Up
+        <ExternalLinkIcon aria-hidden="true" className="size-3" />
+      </span>
+    </span>
+  );
+}
+
+function IntegrationCard({
+  integration,
+}: {
+  readonly integration: Integration;
+}) {
+  const { active, description, guide, name } = integration;
+  return (
+    <CardFrame done={active} guide={guide} name={name}>
+      <span className="flex items-center justify-between gap-2">
+        <span className="truncate text-sm font-medium">{name}</span>
+        {active ? <Status active={true} /> : <SetUpLabel>Off</SetUpLabel>}
+      </span>
+      <span className="text-muted-foreground mt-0.5 line-clamp-2 text-xs text-pretty">
+        {description}
+      </span>
+    </CardFrame>
+  );
+}
+
+/**
+ * Resend, on one card: it's both a connector (the crew sends email) and a
+ * channel (people email the crew), which are set up separately but are one
+ * thing to the person setting them up.
+ */
+function ResendCard({
+  receiving,
+  sending,
+}: {
+  readonly receiving: boolean;
+  readonly sending: boolean;
+}) {
+  const count = Number(sending) + Number(receiving);
+  return (
+    <CardFrame
+      done={count === 2}
+      guide={`${GUIDE}/integrations.md#email`}
+      name="Resend"
+    >
+      <span className="flex items-center justify-between gap-2">
+        <span className="truncate text-sm font-medium">Resend</span>
+        {count === 2 ? (
+          <span className="text-muted-foreground shrink-0 text-xs">
+            2 of 2 active
+          </span>
+        ) : (
+          <SetUpLabel>{`${count} of 2 active`}</SetUpLabel>
+        )}
+      </span>
+      <span className="text-muted-foreground mt-0.5 block text-xs text-pretty">
+        Send and receive email as the crew.
+      </span>
+      <span className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">
+        <span className="inline-flex items-center gap-2">
+          Sending <Status active={sending} />
+        </span>
+        <span className="inline-flex items-center gap-2">
+          Receiving <Status active={receiving} />
+        </span>
+      </span>
+    </CardFrame>
   );
 }
 
@@ -345,6 +412,13 @@ function IntegrationsSection({
 }) {
   return (
     <>
+      <ResendCard
+        receiving={Object.keys(status.email).length > 0}
+        sending={
+          status.catalog.find((entry) => entry.id === RESEND)?.configured ===
+          true
+        }
+      />
       <IntegrationGroup
         action={
           <span className="flex items-center gap-3">
@@ -357,33 +431,25 @@ function IntegrationsSection({
             ) : null}
           </span>
         }
-        integrations={status.catalog.map((entry) => ({
-          active: entry.configured,
-          description: entry.description,
-          guide: `${GUIDE}/integrations.md#connectors`,
-          id: entry.id,
-          name: entry.name,
-        }))}
+        integrations={status.catalog
+          .filter((entry) => entry.id !== RESEND)
+          .map((entry) => ({
+            active: entry.configured,
+            description: entry.description,
+            guide: `${GUIDE}/integrations.md#connectors`,
+            id: entry.id,
+            name: entry.name,
+          }))}
         title="Connectors"
       />
       <IntegrationGroup
-        integrations={[
-          {
-            active: Object.keys(status.email).length > 0,
-            description:
-              "Email the crew, and the crew emails back through Resend.",
-            guide: `${GUIDE}/integrations.md#email`,
-            id: "email",
-            name: "Resend",
-          },
-          ...status.channels.map((entry) => ({
-            active: entry.configured,
-            description: entry.description,
-            guide: `${GUIDE}/integrations.md#channels`,
-            id: entry.id,
-            name: entry.name,
-          })),
-        ]}
+        integrations={status.channels.map((entry) => ({
+          active: entry.configured,
+          description: entry.description,
+          guide: `${GUIDE}/integrations.md#channels`,
+          id: entry.id,
+          name: entry.name,
+        }))}
         title="Channels"
       />
     </>
