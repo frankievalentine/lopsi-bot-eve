@@ -52,9 +52,22 @@ function signInVariable(name: (typeof SIGN_IN_VARIABLES)[number]): string {
   return randomBytes(32).toString("base64url");
 }
 
+const allowedHosts = getAllowedHosts();
+
+/**
+ * Whether Better Auth accepts this request's `host`; it throws on any other. A
+ * domain added to the project is unknown until the next deployment.
+ */
+export function isTrustedHost(host: string | null): boolean {
+  return (
+    process.env.NODE_ENV === "development" ||
+    (host !== null && allowedHosts.includes(host))
+  );
+}
+
 export const auth = betterAuth({
   baseURL: {
-    allowedHosts: getAllowedHosts(),
+    allowedHosts,
     protocol: process.env.NODE_ENV === "development" ? "auto" : "https",
   },
   secret: signInVariable("BETTER_AUTH_SECRET"),

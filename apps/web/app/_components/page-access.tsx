@@ -6,6 +6,7 @@ import { configChangesUnavailable } from "@/lib/github";
 import type { Account } from "./account";
 import type { ConnectorSummary } from "./connections-dialog";
 import { SignInWithVercel } from "./sign-in-with-vercel";
+import { UnknownAddress } from "./unknown-address";
 
 /**
  * Who may see a dashboard page, checked on the server: their account, or the
@@ -18,6 +19,9 @@ export async function pageAccess(
   const account = await currentAccount();
   if (account === "sign-in-with-vercel") {
     return { page: <SignInWithVercel /> };
+  }
+  if (account === "unknown-address") {
+    return { page: <UnknownAddress /> };
   }
   if (account === "login") {
     redirect(`/login?redirect=${encodeURIComponent(path)}`);
