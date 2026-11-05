@@ -177,33 +177,49 @@ function External({
 
 function GeneralSection({
   onPending,
+  onRemove,
   pendingCount,
   status,
 }: {
   readonly onPending: (() => void) | undefined;
+  readonly onRemove: (() => void) | undefined;
   readonly pendingCount: number | null;
   readonly status: SettingsStatus;
 }) {
   const access = ACCESS[status.access];
   return (
-    <Group>
-      <Row hint={access.hint} label="Access">
-        <span className="text-foreground">{access.label}</span>
-        {status.access === "vercel" ||
-        status.access === "open" ||
-        status.access === "demo" ? null : (
-          <External href={`${GUIDE}/access.md`}>Guide</External>
-        )}
-      </Row>
-      <Row label="Chat History">
-        {status.history ? "On the Server" : "In Each Browser"}
-      </Row>
-      <PullRequestsRow
-        onPending={onPending}
-        pendingCount={pendingCount}
-        status={status}
-      />
-    </Group>
+    <>
+      <Group>
+        <Row hint={access.hint} label="Access">
+          <span className="text-foreground">{access.label}</span>
+          {status.access === "vercel" ||
+          status.access === "open" ||
+          status.access === "demo" ? null : (
+            <External href={`${GUIDE}/access.md`}>Guide</External>
+          )}
+        </Row>
+        <Row label="Chat History">
+          {status.history ? "On the Server" : "In Each Browser"}
+        </Row>
+        <PullRequestsRow
+          onPending={onPending}
+          pendingCount={pendingCount}
+          status={status}
+        />
+      </Group>
+      {status.removable && onRemove ? (
+        <Group title="Danger Zone">
+          <Row
+            hint="Removes it from Vercel, with what setup made for it."
+            label="Remove This Project"
+          >
+            <Button onClick={onRemove} size="xs" variant="destructive">
+              Remove
+            </Button>
+          </Row>
+        </Group>
+      ) : null}
+    </>
   );
 }
 
@@ -718,6 +734,7 @@ export function SettingsDialog({
   onEdit,
   onOpenChange,
   onPendingChanges,
+  onRemove,
   open,
   pendingCount,
 }: {
@@ -728,6 +745,8 @@ export function SettingsDialog({
   readonly onOpenChange: (open: boolean) => void;
   /** Opens Pending Changes; absent where changes aren't possible. */
   readonly onPendingChanges?: (() => void) | undefined;
+  /** Opens Remove This Project. */
+  readonly onRemove?: (() => void) | undefined;
   readonly open: boolean;
   readonly pendingCount: number | null;
 }) {
@@ -789,6 +808,7 @@ export function SettingsDialog({
                 "general",
                 <GeneralSection
                   onPending={then(onPendingChanges)}
+                  onRemove={then(onRemove)}
                   pendingCount={pendingCount}
                   status={loaded.status}
                 />

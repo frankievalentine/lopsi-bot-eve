@@ -17,7 +17,7 @@ Each chat has its own sandbox. The **Computer** button in the chat header shows 
 
 **Settings** in the sidebar (or the account menu on a phone) opens a dialog with four sections:
 
-- **General**: the access mode, where chat history is kept, and where pull requests go.
+- **General**: the access mode, where chat history is kept, where pull requests go, and [removing the project](removing.md).
 - **Integrations**: each connector and channel, Off or Active, with a link to set up the rest.
 - **Crew**: what each member has beyond its Edit form, from its deployed agent: active channels, services and whether they ask first, skills, schedules, subagents and sandbox.
 - **Usage**: the budget per chat, and links to AI Gateway, Observability and Tracing.

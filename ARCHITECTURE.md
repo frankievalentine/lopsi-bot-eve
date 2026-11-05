@@ -55,6 +55,7 @@ apps/
       workspace-store.ts    # production mode: workspace snapshots in private Blob
       agent-info.ts         # each member's effective setup, from its operator-only /info route
       session-budget.ts     # LOPSI_SESSION_BUDGET_USD, read by the agent's limits.ts and Settings
+      project-removal.ts    # Settings' Remove This Project: what's this project's alone, then removing it with a pasted Vercel token
       config-changes.ts     # a dashboard edit as the files of one pull request
       crew-core.mjs         # crew.json rules and crew.generated.ts, shared with scripts/crew.mjs
       github.ts             # repository, Connect GitHub token, reading files, opening pull requests

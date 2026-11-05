@@ -42,6 +42,8 @@ export interface SettingsStatus {
   readonly history: boolean;
   /** Local development: changes are made in the files, not by pull request. */
   readonly local: boolean;
+  /** Whether someone can remove this project from Settings: production only. */
+  readonly removable: boolean;
   /** `owner/repo@branch` that pull requests go to. */
   readonly repository?: string;
 }
@@ -96,6 +98,7 @@ function demoSettings() {
       github: true,
       history: false,
       local: false,
+      removable: false,
       repository: "frankievalentine/lopsi-bot-eve@main",
     },
   };
@@ -153,6 +156,8 @@ export async function loadSettings(): Promise<
       github: configChangesUnavailable() === undefined,
       history: isProductionMode(),
       local: account.kind === "open",
+      removable:
+        account.kind !== "open" && process.env.VERCEL_ENV === "production",
       ...(repository === undefined
         ? {}
         : {

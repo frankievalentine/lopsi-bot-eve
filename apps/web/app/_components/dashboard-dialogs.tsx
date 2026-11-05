@@ -16,6 +16,9 @@ const ConnectionsDialog = dynamic(() =>
 const MemberConfigDialog = dynamic(() =>
   import("./member-config-dialog").then((module) => module.MemberConfigDialog)
 );
+const RemoveProjectDialog = dynamic(() =>
+  import("./remove-project-dialog").then((module) => module.RemoveProjectDialog)
+);
 const SettingsDialog = dynamic(() =>
   import("./settings-dialog").then((module) => module.SettingsDialog)
 );
@@ -64,6 +67,8 @@ export function useDashboardDialogs({
   );
   const [pendingOpen, setPendingOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [removeOpen, setRemoveOpen] = useState(false);
+  const removeOpened = useOpenedOnce(removeOpen);
   const settingsOpened = useOpenedOnce(settingsOpen);
   const connectionsOpened = useOpenedOnce(connectionsOpen);
   const memberOpened = useOpenedOnce(memberDialog !== null);
@@ -95,9 +100,13 @@ export function useDashboardDialogs({
           onEdit={actions.openEdit}
           onOpenChange={setSettingsOpen}
           onPendingChanges={actions.openPendingChanges}
+          onRemove={() => setRemoveOpen(true)}
           open={settingsOpen}
           pendingCount={pending.count}
         />
+      ) : null}
+      {removeOpened ? (
+        <RemoveProjectDialog onOpenChange={setRemoveOpen} open={removeOpen} />
       ) : null}
       {hasConnectors && connectionsOpened ? (
         <ConnectionsDialog
