@@ -29,7 +29,10 @@ export function SignInWithVercel() {
   };
 
   return (
-    <main className="bg-background flex min-h-svh flex-col items-center justify-center gap-6 p-6 text-center">
+    <main
+      className="bg-background flex min-h-svh flex-col items-center justify-center gap-6 p-6 text-center"
+      id="main"
+    >
       <Mascot kind="skipper" mood="idle" size={88} />
       <div className="space-y-1">
         <h1 className="text-lg font-semibold">Lopsi Bot</h1>

@@ -1,12 +1,12 @@
-import { LockIcon } from "lucide-react";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { LMark } from "@/components/l-mark";
 import { ACCESS_COOKIE, accessMode, verifyAccessToken } from "@/lib/access";
 import { PasswordForm } from "./password-form";
 import { safeRedirect } from "./safe-redirect";
 
-export const metadata: Metadata = { title: "Sign in · Lopsi Bot" };
+export const metadata: Metadata = { title: "Sign In · Lopsi Bot" };
 
 /** What a deployer does to open a locked deployment: a command or variable, and the rest of the sentence. */
 const SETUP_STEPS: Record<
@@ -65,13 +65,16 @@ export default async function LoginPage({
   }
 
   return (
-    <main className="bg-background text-foreground flex min-h-dvh items-center justify-center px-4">
+    <main
+      className="bg-background text-foreground flex min-h-dvh items-center justify-center px-4"
+      id="main"
+    >
       <div className="flex w-full max-w-sm flex-col gap-6">
         <div className="flex flex-col items-center gap-3 text-center">
-          <span className="bg-muted flex size-10 items-center justify-center rounded-full">
-            <LockIcon className="text-muted-foreground size-4" />
-          </span>
-          <h1 className="text-2xl font-medium tracking-tight">Sign in</h1>
+          <LMark label="" size={56} />
+          <h1 className="text-2xl font-medium tracking-tight">
+            Sign In to Lopsi Bot
+          </h1>
           <p className="text-muted-foreground text-sm">
             {mode === "password"
               ? "Enter the access password to reach the crew."

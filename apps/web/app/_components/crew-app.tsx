@@ -136,11 +136,14 @@ export function CrewApp({
       {dialogs}
       <CrewSidebar {...listProps} />
       {chat ?? (
-        <main className="flex h-svh min-h-[640px] min-w-0 flex-[999_1_560px] flex-col items-center justify-center gap-2 p-8 text-center">
+        <main
+          className="flex h-svh min-w-0 flex-[999_1_560px] flex-col items-center justify-center gap-2 p-8 text-center"
+          id="main"
+        >
           <h1 className="text-base font-semibold">
             {CREW.length === 0
-              ? "No crew yet"
-              : "Choose someone from your crew"}
+              ? "No Crew Yet"
+              : "Choose Someone From Your Crew"}
           </h1>
           <p className="text-muted-foreground max-w-sm text-sm">
             {CREW.length === 0

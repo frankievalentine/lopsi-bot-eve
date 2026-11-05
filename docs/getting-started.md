@@ -37,7 +37,7 @@ It creates a Vercel App only your team can sign in to and a private Blob store. 
 
 ## 4. Shape the crew
 
-Open **Edit** in a crew member's chat to change its name, role, mascot, model, instructions, tools and connectors, or **New crew member** in the sidebar to add one. Each opens a pull request; merge it and Vercel deploys the change. **Pending changes** lists the open ones. Details: [docs/crew.md](crew.md).
+Open **Edit** in a crew member's chat to change its name, role, mascot, model, instructions, tools and connectors, or **New Crew Member** in the sidebar to add one. Each opens a pull request; merge it and Vercel deploys the change. **Pending Changes** lists the open ones. Details: [docs/crew.md](crew.md).
 
 ## 5. Add integrations
 

@@ -251,7 +251,7 @@ function ComputerPanel({
         <span className="flex-1 text-sm font-semibold">Computer</span>
         {onClose ? (
           <Button
-            aria-label="Close computer"
+            aria-label="Close Computer"
             onClick={onClose}
             size="icon-sm"
             variant="ghost"
