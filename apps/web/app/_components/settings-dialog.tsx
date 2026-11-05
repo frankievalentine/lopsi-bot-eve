@@ -245,22 +245,100 @@ function PullRequestsRow({
   );
 }
 
-function IntegrationRow({
-  active,
-  description,
-  guide,
-  name,
-}: {
+interface Integration {
   readonly active: boolean;
-  readonly description?: string | undefined;
+  readonly description: string;
+  /** Where to set it up. */
   readonly guide: string;
+  readonly id: string;
   readonly name: string;
+}
+
+function IntegrationCard({
+  integration,
+}: {
+  readonly integration: Integration;
 }) {
+  const { active, description, guide, name } = integration;
+  const body = (
+    <>
+      <span
+        aria-hidden="true"
+        className="bg-muted text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-md text-xs font-medium"
+      >
+        {name.charAt(0)}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center justify-between gap-2">
+          <span className="truncate text-sm font-medium">{name}</span>
+          {active ? (
+            <Status active={true} />
+          ) : (
+            <span className="text-muted-foreground shrink-0 text-xs">
+              <span className="group-hover/card:hidden group-focus-visible/card:hidden">
+                Off
+              </span>
+              <span className="text-foreground hidden items-center gap-1 group-hover/card:inline-flex group-focus-visible/card:inline-flex">
+                Set Up
+                <ExternalLinkIcon aria-hidden="true" className="size-3" />
+              </span>
+            </span>
+          )}
+        </span>
+        <span className="text-muted-foreground mt-0.5 line-clamp-2 text-xs text-pretty">
+          {description}
+        </span>
+      </span>
+    </>
+  );
+  const frame = "flex items-start gap-3 rounded-lg border p-3 text-left";
+  return active ? (
+    <div className={frame}>{body}</div>
+  ) : (
+    <a
+      aria-label={`Set Up ${name}`}
+      className={cn(
+        frame,
+        "group/card hover:bg-accent focus-visible:ring-ring/50 transition-colors outline-none focus-visible:ring-3"
+      )}
+      href={guide}
+      rel="noreferrer"
+      target="_blank"
+    >
+      {body}
+    </a>
+  );
+}
+
+function IntegrationGroup({
+  action,
+  integrations,
+  title,
+}: {
+  readonly action?: ReactNode;
+  readonly integrations: readonly Integration[];
+  readonly title: string;
+}) {
+  const active = integrations.filter((entry) => entry.active);
   return (
-    <Row hint={description} label={name}>
-      {active ? null : <External href={guide}>Set Up</External>}
-      <Status active={active} />
-    </Row>
+    <section className="space-y-2">
+      <div className="flex min-h-7 flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <h3 className="text-sm font-medium">
+          {title}
+          <span className="text-muted-foreground ml-2 text-xs font-normal">
+            {active.length} of {integrations.length} active
+          </span>
+        </h3>
+        {action}
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {[...active, ...integrations.filter((entry) => !entry.active)].map(
+          (entry) => (
+            <IntegrationCard integration={entry} key={entry.id} />
+          )
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -271,51 +349,49 @@ function IntegrationsSection({
   readonly onConnections: (() => void) | undefined;
   readonly status: SettingsStatus;
 }) {
-  const connectors = `${GUIDE}/integrations.md#connectors`;
-  const channels = `${GUIDE}/integrations.md#channels`;
   return (
     <>
-      <Group
+      <IntegrationGroup
         action={
-          onConnections ? (
-            <Button onClick={onConnections} size="xs" variant="outline">
-              <PlugIcon className="size-3" />
-              Your Connections
-            </Button>
-          ) : undefined
+          <span className="flex items-center gap-3">
+            <External href={CONNECT_LINK}>Vercel Connect</External>
+            {onConnections ? (
+              <Button onClick={onConnections} size="xs" variant="outline">
+                <PlugIcon className="size-3" />
+                Your Connections
+              </Button>
+            ) : null}
+          </span>
         }
+        integrations={status.catalog.map((entry) => ({
+          active: entry.configured,
+          description: entry.description,
+          guide: `${GUIDE}/integrations.md#connectors`,
+          id: entry.id,
+          name: entry.name,
+        }))}
         title="Connectors"
-      >
-        {status.catalog.map((entry) => (
-          <IntegrationRow
-            active={entry.configured}
-            description={entry.description}
-            guide={connectors}
-            key={entry.id}
-            name={entry.name}
-          />
-        ))}
-        <Row hint="Connectors your team created" label="Vercel Connect">
-          <External href={CONNECT_LINK}>Open</External>
-        </Row>
-      </Group>
-      <Group title="Channels">
-        <IntegrationRow
-          active={Object.keys(status.email).length > 0}
-          description="Email the crew, and the crew emails back through Resend."
-          guide={`${GUIDE}/integrations.md#email`}
-          name="Email"
-        />
-        {status.channels.map((entry) => (
-          <IntegrationRow
-            active={entry.configured}
-            description={entry.description}
-            guide={channels}
-            key={entry.id}
-            name={entry.name}
-          />
-        ))}
-      </Group>
+      />
+      <IntegrationGroup
+        integrations={[
+          {
+            active: Object.keys(status.email).length > 0,
+            description:
+              "Email the crew, and the crew emails back through Resend.",
+            guide: `${GUIDE}/integrations.md#email`,
+            id: "email",
+            name: "Email",
+          },
+          ...status.channels.map((entry) => ({
+            active: entry.configured,
+            description: entry.description,
+            guide: `${GUIDE}/integrations.md#channels`,
+            id: entry.id,
+            name: entry.name,
+          })),
+        ]}
+        title="Channels"
+      />
     </>
   );
 }
