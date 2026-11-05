@@ -53,4 +53,4 @@ Email and channels add [Upstash for Redis](../README.md#what-it-runs-on) the fir
 
 ## 6. Check it
 
-**Settings** in the sidebar shows how the deployment is set up: access, history, email, the budget per chat, which connectors and channels are on, and each crew member's tools and channels. Each chat's **Computer** button shows what its sandbox ran.
+**Settings** in the sidebar shows how the deployment is set up: access, history, the budget per chat, which connectors and channels are active, and what each crew member has beyond its Edit form. Each chat's **Computer** button shows what its sandbox ran.

@@ -8,7 +8,7 @@ The crew reaches other services and people three ways. Each is off until you set
 | [Email](#email) | An address per crew member that people can write to, and email sent from the crew (through the Resend connector) | `pnpm setup:email` |
 | [Channels](#channels) | A messaging channel per crew member: AgentPhone, Dial and Sendblue (SMS, iMessage, voice), Kapso (WhatsApp), Lark / Feishu, Liveblocks and Velt (comment threads), Novu and Zernio (several platforms) | `pnpm setup:channel <channel>` |
 
-Settings → **Integrations** in the dashboard shows which are set up and the command for the rest; Settings → **Crew** shows each member's connections and channels. Every integration follows the same rules: anything that changes something waits for approval, and on email and channels only senders you allow reach the crew.
+Settings → **Integrations** in the dashboard shows which are Active; Settings → **Crew** shows each member's services and active channels. Every integration follows the same rules: anything that changes something waits for approval, and on email and channels only senders you allow reach the crew.
 
 ## Connectors
 
@@ -58,5 +58,5 @@ It asks which crew member answers, installs the adapter, writes `agents/<member>
 
 - One crew member answers each channel. Everyone else's messages are dropped without a reply; the turn runs as the sender, so approvals and sign-ins reach only them. Phone numbers can be spoofed, which is why actions still ask first.
 - A channel whose variables aren't set is off: its webhook fails the provider's signature check and every message is dropped, so a committed channel never breaks `eve dev` or a deployment.
-- **Settings → Integrations** lists the channels and their setup commands; **Crew** shows which member answers which.
+- **Settings → Integrations** lists each channel as Off or Active; **Crew** shows which member answers which.
 - Beeper isn't offered: its adapter (0.2.0) can't be loaded by Node as published.

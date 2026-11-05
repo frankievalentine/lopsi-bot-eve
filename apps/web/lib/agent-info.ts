@@ -10,7 +10,7 @@
 import { getVercelOidcToken } from "@vercel/oidc";
 import { type AgentInfoResult, Client } from "eve/client";
 
-/** What the settings page shows for one crew member. Serializable. */
+/** What Settings shows for one crew member, beyond its Edit form. Serializable. */
 export interface MemberSetup {
   /** Channels besides the web chat (`resend`, `sendblue`…), by name. */
   readonly channels: readonly string[];
@@ -19,17 +19,10 @@ export interface MemberSetup {
     readonly name: string;
   }[];
   readonly diagnostics: { readonly errors: number; readonly warnings: number };
-  readonly hooks: readonly string[];
-  readonly model: string;
-  readonly reasoning?: string;
   readonly sandbox?: string;
   readonly schedules: readonly string[];
   readonly skills: readonly string[];
   readonly subagents: readonly string[];
-  readonly tools: readonly {
-    readonly approval: boolean;
-    readonly name: string;
-  }[];
 }
 
 export type MemberSetupResult =
@@ -40,7 +33,6 @@ export type MemberSetupResult =
 const BUILT_IN_CHANNELS = new Set(["eve", "home"]);
 
 function summarize(info: AgentInfoResult): MemberSetup {
-  const { model } = info.agent;
   return {
     channels: [
       ...new Set(info.channels.routes.map((route) => route.name)),
@@ -53,16 +45,9 @@ function summarize(info: AgentInfoResult): MemberSetup {
       errors: info.diagnostics.discoveryErrors,
       warnings: info.diagnostics.discoveryWarnings,
     },
-    hooks: info.hooks.map((hook) => hook.slug),
-    model: ("id" in model ? model.id : undefined) ?? "unknown",
     schedules: info.schedules.map((schedule) => schedule.name),
     skills: info.skills.static.map((skill) => skill.name),
     subagents: info.subagents.local.map((subagent) => subagent.name),
-    tools: info.tools.static.map((tool) => ({
-      approval: tool.requiresApproval,
-      name: tool.name,
-    })),
-    ...(model.reasoning === undefined ? {} : { reasoning: model.reasoning }),
     ...(info.sandbox.provider === undefined
       ? {}
       : { sandbox: info.sandbox.provider }),

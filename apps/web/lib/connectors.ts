@@ -40,12 +40,14 @@ export interface ConfiguredConnector extends Connector {
 /** Every service in connectors.json, and whether this deployment has set it up. */
 export function connectorCatalog(): readonly {
   readonly configured: boolean;
+  readonly description: string;
   readonly id: string;
   readonly name: string;
   readonly variable: string;
 }[] {
-  return CONNECTORS.map(({ id, name, variable }) => ({
+  return CONNECTORS.map(({ description, id, name, variable }) => ({
     configured: Boolean(process.env[variable]?.trim()),
+    description,
     id,
     name,
     variable,

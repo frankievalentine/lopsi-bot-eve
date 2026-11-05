@@ -19,6 +19,7 @@ export interface SettingsStatus {
   readonly budgetUsd: number;
   readonly catalog: readonly {
     readonly configured: boolean;
+    readonly description: string;
     readonly id: string;
     readonly name: string;
     readonly variable: string;
@@ -26,6 +27,7 @@ export interface SettingsStatus {
   /** The messaging channels in apps/web/lib/channels.json, and whether each is set up. */
   readonly channels: readonly {
     readonly configured: boolean;
+    readonly description: string;
     readonly id: string;
     readonly name: string;
   }[];
@@ -86,6 +88,7 @@ export async function loadSettings(): Promise<
       catalog: connectorCatalog(),
       channels: channelCatalog.map((entry) => ({
         configured: isConfigured(entry.env.map((variable) => variable.name)),
+        description: entry.description,
         id: entry.id,
         name: entry.name,
       })),
