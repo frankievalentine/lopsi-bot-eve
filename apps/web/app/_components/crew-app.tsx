@@ -7,7 +7,7 @@ import type { MascotMood } from "@/components/mascot";
 import { authClient } from "@/lib/auth-client";
 import { useMergedHistory } from "@/lib/chat-history";
 import type { ChatRecord, Transcript } from "@/lib/chat-store";
-import { CREW, type CrewMember } from "@/lib/crew.generated";
+import { CREW, type CrewMember } from "@/lib/crew";
 import { faviconFor, useFavicon } from "@/lib/favicon";
 import { useIsPhone } from "@/lib/use-phone";
 import { signOutOfPassword } from "../login/actions";

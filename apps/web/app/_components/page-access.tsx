@@ -30,6 +30,9 @@ export function dashboardFeatures(account: Account): {
   changes?: { readonly available: boolean; readonly reason?: string };
   connectors: readonly ConnectorSummary[];
 } {
+  if (account.kind === "demo") {
+    return { connectors: [] };
+  }
   // Names only: connector UIDs stay on the server.
   const connectors = configuredConnectors().map(({ id, name }) => ({
     id,

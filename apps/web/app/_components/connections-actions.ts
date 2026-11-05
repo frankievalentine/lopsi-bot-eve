@@ -23,7 +23,11 @@ export interface ConnectionStatus {
  */
 async function grantHolder() {
   const account = await currentAccount();
-  if (typeof account === "string" || account.kind === "open") {
+  if (
+    typeof account === "string" ||
+    account.kind === "open" ||
+    account.kind === "demo"
+  ) {
     return;
   }
   return account.kind === "vercel" ? { principalId: account.id } : OPERATOR;

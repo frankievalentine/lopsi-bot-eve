@@ -23,7 +23,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { type ChatHistory, memberHref } from "@/lib/chat-history";
-import type { CrewMember } from "@/lib/crew.generated";
+import type { CrewMember } from "@/lib/crew";
+import { DEPLOY_URL, isDemo } from "@/lib/demo";
 import { cn } from "@/lib/utils";
 import { formatWhen } from "@/lib/when";
 import type { Account } from "./account";
@@ -71,6 +72,19 @@ function PendingBadge({ count }: { readonly count: number }) {
 }
 
 /** The person in the list's footer or header. */
+/** The demo's way to a real crew; nothing outside demo mode. */
+function DeployYourOwn() {
+  return isDemo ? (
+    <Button
+      className="mb-1 w-full"
+      render={<a href={DEPLOY_URL} rel="noreferrer" target="_blank" />}
+      size="sm"
+    >
+      Deploy Your Own
+    </Button>
+  ) : null;
+}
+
 function personOf(account: Account): {
   detail: string;
   initials: string;
@@ -83,6 +97,8 @@ function personOf(account: Account): {
         initials: initialsOf(account.name, account.email),
         name: account.name,
       };
+    case "demo":
+      return { detail: "Scripted replies", initials: "LB", name: "Demo" };
     case "password":
       return {
         detail: "Shared password",
@@ -217,6 +233,7 @@ export function CrewSidebar({
       </nav>
 
       <div className="border-sidebar-border flex flex-col gap-0.5 border-t px-3 py-2.5">
+        <DeployYourOwn />
         {changes ? (
           <button
             className="hover:bg-sidebar-accent flex w-full items-center gap-2.5 rounded-md p-2 text-left text-sm transition-colors disabled:opacity-50"
@@ -421,6 +438,9 @@ export function MobileCrewList({
           </p>
         ) : null}
       </nav>
+      <div className="mt-auto p-4">
+        <DeployYourOwn />
+      </div>
     </main>
   );
 }

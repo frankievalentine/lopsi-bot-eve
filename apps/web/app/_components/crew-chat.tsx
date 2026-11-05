@@ -62,7 +62,9 @@ import {
   setCurrentChat,
 } from "@/lib/chat-history";
 import type { Transcript } from "@/lib/chat-store";
-import type { CrewMember } from "@/lib/crew.generated";
+import type { CrewMember } from "@/lib/crew";
+import { isDemo } from "@/lib/demo";
+import { useDemoAgent } from "@/lib/use-demo-agent";
 import { cn } from "@/lib/utils";
 import { formatWhen } from "@/lib/when";
 import type { Account } from "./account";
@@ -70,6 +72,8 @@ import { ComputerButton, ComputerSurface, useComputer } from "./computer-panel";
 import { EveMessageView, textOf } from "./eve-message";
 import { useSignInRedirect } from "./use-sign-in-redirect";
 import { useTranscriptSaving } from "./use-transcript-saving";
+
+const useAgent = isDemo ? useDemoAgent : useEveAgent;
 
 /** Ported from lopsi-bot's chat-view.tsx, on eve's `useEveAgent`. */
 
@@ -170,7 +174,7 @@ export function CrewChat({
     );
   };
 
-  const agent = useEveAgent({
+  const agent = useAgent({
     agent: member.id,
     ...restoreFrom(saved, sessionId),
     onSessionChange(session) {
@@ -552,6 +556,7 @@ function activityLabel(now: Activity): string {
 
 /** Who can reach this crew, in place of Lopsi's "Tailnet only". */
 const ACCESS_BADGES: Record<Account["kind"], string> = {
+  demo: "Demo",
   open: "Local",
   password: "Password",
   vercel: "Your team",
@@ -559,6 +564,7 @@ const ACCESS_BADGES: Record<Account["kind"], string> = {
 
 /** Who else can open these chats, under the composer. */
 const ACCESS_NOTES: Record<Account["kind"], string> = {
+  demo: "Scripted demo: replies are prewritten and no model runs.",
   open: "Local development: no sign-in.",
   password: "Everyone with the password shares these chats.",
   vercel: "Anyone on your team with this chat's link can open it.",
@@ -730,7 +736,10 @@ function Composer({
           {member.suggestions.map((suggestion) => (
             <Suggestion
               key={suggestion}
-              onClick={(value) => controller.textInput.setInput(value)}
+              // The demo only has scripts for these exact prompts, so they go straight out.
+              onClick={(value) =>
+                isDemo ? onSend(value) : controller.textInput.setInput(value)
+              }
               suggestion={suggestion}
             />
           ))}

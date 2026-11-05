@@ -6,8 +6,9 @@ import { type MemberSetupResult, memberSetup } from "@/lib/agent-info";
 import { isConfigured } from "@/lib/channel-core.mjs";
 import channelCatalog from "@/lib/channels.json";
 import { connectorCatalog } from "@/lib/connectors";
-import { CREW } from "@/lib/crew.generated";
+import { CREW } from "@/lib/crew";
 import { currentAccount } from "@/lib/current-account";
+import { isDemo } from "@/lib/demo";
 import { emailSetup } from "@/lib/email";
 import { configChangesUnavailable, targetRepository } from "@/lib/github";
 import { isProductionMode } from "@/lib/production-mode";
@@ -15,7 +16,7 @@ import { sessionBudgetUsd } from "@/lib/session-budget";
 
 /** How this deployment is set up, as the Settings dialog shows it. */
 export interface SettingsStatus {
-  readonly access: AccessMode;
+  readonly access: AccessMode | "demo";
   readonly budgetUsd: number;
   readonly catalog: readonly {
     readonly configured: boolean;
@@ -55,6 +56,51 @@ async function originOf(): Promise<string> {
   return `${protocol}://${host}`;
 }
 
+/** The demo's example setup: nothing here is read from a deployment. */
+function demoSettings() {
+  const active = new Set(["linear", "notion"]);
+  return {
+    ok: true as const,
+    setups: Object.fromEntries(
+      CREW.map((member) => [
+        member.id,
+        {
+          ok: true as const,
+          setup: {
+            channels: [],
+            connections: [...active].map((name) => ({ approval: true, name })),
+            diagnostics: { errors: 0, warnings: 0 },
+            sandbox: "vercel",
+            schedules: [],
+            skills: [],
+            subagents: [],
+          },
+        },
+      ])
+    ),
+    status: {
+      access: "demo" as const,
+      budgetUsd: 1,
+      catalog: connectorCatalog().map((entry) => ({
+        ...entry,
+        configured: active.has(entry.id),
+      })),
+      channels: channelCatalog.map((entry) => ({
+        configured: false,
+        description: entry.description,
+        id: entry.id,
+        name: entry.name,
+      })),
+      email: { lopsi: "lopsi@example.com" },
+      emailSenders: 0,
+      github: true,
+      history: false,
+      local: false,
+      repository: "frankievalentine/lopsi-bot-eve@main",
+    },
+  };
+}
+
 /**
  * What the Settings dialog shows: how this deployment is set up, and each crew
  * member's effective setup from its deployed agent's `/info`.
@@ -67,6 +113,9 @@ export async function loadSettings(): Promise<
     }
   | { readonly ok: false; readonly error: string }
 > {
+  if (isDemo) {
+    return demoSettings();
+  }
   const account = await currentAccount();
   if (typeof account === "string") {
     return { error: "Sign in to see settings.", ok: false };

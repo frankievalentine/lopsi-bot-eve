@@ -2,6 +2,7 @@ import { cookies, headers } from "next/headers";
 import type { Account } from "@/app/_components/account";
 import { ACCESS_COOKIE, accessMode, verifyAccessToken } from "./access";
 import { auth } from "./auth";
+import { isDemo } from "./demo";
 
 /**
  * Who is making this request, read on the server from the mode and the
@@ -14,6 +15,10 @@ import { auth } from "./auth";
 export async function currentAccount(): Promise<
   Account | "sign-in-with-vercel" | "login"
 > {
+  if (isDemo) {
+    return { kind: "demo" };
+  }
+
   const mode = accessMode();
 
   if (
