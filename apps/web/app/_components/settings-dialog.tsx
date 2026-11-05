@@ -374,7 +374,7 @@ function IntegrationsSection({
               "Email the crew, and the crew emails back through Resend.",
             guide: `${GUIDE}/integrations.md#email`,
             id: "email",
-            name: "Email",
+            name: "Resend",
           },
           ...status.channels.map((entry) => ({
             active: entry.configured,
@@ -482,7 +482,7 @@ function MemberChannels({
       <Row label="Web Chat">
         <Status active={true} />
       </Row>
-      <Row hint={email} label="Email">
+      <Row hint={email} label="Resend">
         <Status active={email !== undefined} />
       </Row>
       {active.map((entry) => (
