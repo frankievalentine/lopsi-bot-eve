@@ -288,7 +288,7 @@ export function MemberConfigDialog({
           <form className="flex flex-col gap-4" onSubmit={submit}>
             <DialogHeader>
               <DialogTitle>
-                {editing ? "Edit crew member" : "New crew member"}
+                {editing ? "Edit Crew Member" : "New Crew Member"}
               </DialogTitle>
               <DialogDescription>
                 Saving opens a pull request. Nothing changes until it's merged
@@ -333,7 +333,7 @@ export function MemberConfigDialog({
                 disabled={!ready || saving || !form.name.trim()}
                 type="submit"
               >
-                {saving ? "Opening pull request…" : "Open pull request"}
+                {saving ? "Opening Pull Request…" : "Open Pull Request"}
               </Button>
             </DialogFooter>
           </form>
@@ -549,7 +549,7 @@ function PullRequestOpened({
   return (
     <div className="flex flex-col gap-4">
       <DialogHeader>
-        <DialogTitle>Pull request opened</DialogTitle>
+        <DialogTitle>Pull Request Opened</DialogTitle>
         <DialogDescription>
           {pull.draft ? "A draft pull request" : "A pull request"} is waiting
           for review. Merging it deploys the change.

@@ -627,7 +627,7 @@ function ConnectCard({ part }: { readonly part: EveInteractionPart }) {
                   size="sm"
                 >
                   <ExternalLinkIcon className="size-3.5" />
-                  Sign in to {name}
+                  Sign In to {name}
                 </Button>
               </div>
             ) : null}

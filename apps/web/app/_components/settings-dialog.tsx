@@ -206,7 +206,7 @@ function MemberSection({
           href={`/c/${encodeURIComponent(member.id)}`}
           onClick={onOpenChat}
         >
-          Open chat
+          Open Chat
         </Link>
         <span className="text-muted-foreground font-mono text-xs">
           agents/{member.id}
@@ -248,7 +248,7 @@ function ConnectorsSection({
         onConnections ? (
           <Button onClick={onConnections} size="sm" variant="outline">
             <PlugIcon className="size-3.5" />
-            Your connections
+            Your Connections
           </Button>
         ) : undefined
       }
@@ -258,7 +258,7 @@ function ConnectorsSection({
       {catalog.map((entry) => (
         <Row key={entry.id} label={entry.name}>
           {entry.configured ? (
-            <Badge variant="secondary">Set up</Badge>
+            <Badge variant="secondary">Set Up</Badge>
           ) : (
             <code className="text-xs">pnpm setup:connector {entry.id}</code>
           )}
@@ -294,7 +294,7 @@ function ChangesStatus({
       {onPending ? (
         <Button onClick={onPending} size="xs" variant="outline">
           <GitPullRequestIcon className="size-3" />
-          Pending changes
+          Pending Changes
           {pendingCount ? ` (${pendingCount})` : ""}
         </Button>
       ) : null}
@@ -318,7 +318,7 @@ function ChannelsSection({
       {channels.map((entry) => (
         <Row key={entry.id} label={entry.name}>
           {entry.configured ? (
-            <Badge variant="secondary">Set up</Badge>
+            <Badge variant="secondary">Set Up</Badge>
           ) : (
             <code className="text-xs">pnpm setup:channel {entry.id}</code>
           )}
@@ -405,7 +405,7 @@ function CrewPages({
           className="flex flex-wrap items-center gap-1"
         >
           <Button
-            aria-label="Previous crew member"
+            aria-label="Previous Crew Member"
             disabled={at === 0}
             onClick={() => setIndex(at - 1)}
             size="icon-sm"
@@ -427,7 +427,7 @@ function CrewPages({
             </Button>
           ))}
           <Button
-            aria-label="Next crew member"
+            aria-label="Next Crew Member"
             disabled={at === CREW.length - 1}
             onClick={() => setIndex(at + 1)}
             size="icon-sm"
@@ -487,7 +487,7 @@ export function SettingsDialog({
   /** Opens a member's Edit; absent where changes aren't possible. */
   readonly onEdit?: ((memberId: string) => void) | undefined;
   readonly onOpenChange: (open: boolean) => void;
-  /** Opens Pending changes; absent where changes aren't possible. */
+  /** Opens Pending Changes; absent where changes aren't possible. */
   readonly onPendingChanges?: (() => void) | undefined;
   readonly open: boolean;
   readonly pendingCount: number | null;

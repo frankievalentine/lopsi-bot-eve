@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -30,6 +30,14 @@ export const metadata: Metadata = {
     ],
   },
   title: "Lopsi Bot",
+  twitter: { card: "summary_large_image" },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { color: "#ffffff", media: "(prefers-color-scheme: light)" },
+    { color: "#0a0a0a", media: "(prefers-color-scheme: dark)" },
+  ],
 };
 
 export default function RootLayout({
@@ -40,6 +48,12 @@ export default function RootLayout({
   return (
     <html className={cn(sans.variable, mono.variable)} lang="en">
       <body>
+        <a
+          className="bg-background focus-visible:ring-ring/50 sr-only z-50 rounded-md border px-3 py-2 text-sm focus-visible:not-sr-only focus-visible:fixed focus-visible:top-2 focus-visible:left-2 focus-visible:ring-3"
+          href="#main"
+        >
+          Skip to Content
+        </a>
         <TooltipProvider>{children}</TooltipProvider>
       </body>
     </html>

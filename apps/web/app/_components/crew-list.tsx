@@ -148,11 +148,11 @@ export function CrewSidebar({
         <span className="flex-1" />
         {changes ? (
           <Button
-            aria-label="New crew member"
+            aria-label="New Crew Member"
             disabled={!changes.available}
             onClick={changes.onNewMember}
             size="icon-sm"
-            title={changes.available ? "New crew member" : changes.reason}
+            title={changes.available ? "New Crew Member" : changes.reason}
             variant="ghost"
           >
             <SquarePenIcon className="size-4" />
@@ -161,13 +161,13 @@ export function CrewSidebar({
       </div>
 
       <div className="px-3 pb-2">
-        <label className="bg-background flex h-8 items-center gap-2 rounded-md border px-2.5 shadow-xs">
+        <label className="bg-background focus-within:ring-ring/50 flex h-8 items-center gap-2 rounded-md border px-2.5 shadow-xs focus-within:ring-3">
           <SearchIcon className="text-muted-foreground size-4" />
           <input
             aria-label="Search crew"
             className="placeholder:text-muted-foreground w-full bg-transparent text-[13px] outline-none"
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search crew"
+            placeholder="Search crew…"
             value={query}
           />
         </label>
@@ -226,7 +226,7 @@ export function CrewSidebar({
             type="button"
           >
             <GitPullRequestIcon className="size-4" />
-            Pending changes
+            Pending Changes
             <PendingBadge count={changes.pendingCount} />
           </button>
         ) : null}
@@ -263,10 +263,10 @@ export function CrewSidebar({
         </span>
         {onSignOut ? (
           <Button
-            aria-label="Sign out"
+            aria-label="Sign Out"
             onClick={onSignOut}
             size="icon-sm"
-            title="Sign out"
+            title="Sign Out"
             variant="ghost"
           >
             <LogOutIcon className="size-4" />
@@ -295,7 +295,7 @@ export function MobileCrewList({
   const person = personOf(account);
 
   return (
-    <div className="bg-background flex min-h-svh flex-col">
+    <main className="bg-background flex min-h-svh flex-col" id="main">
       <header className="flex items-center gap-2 px-4 pt-5 pb-2">
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -307,7 +307,7 @@ export function MobileCrewList({
           <DropdownMenuContent>
             {changes?.available ? (
               <DropdownMenuItem onClick={changes.onPendingChanges}>
-                Pending changes
+                Pending Changes
                 <PendingBadge count={changes.pendingCount} />
               </DropdownMenuItem>
             ) : null}
@@ -318,19 +318,19 @@ export function MobileCrewList({
             ) : null}
             <DropdownMenuItem onClick={onSettings}>Settings</DropdownMenuItem>
             {onSignOut ? (
-              <DropdownMenuItem onClick={onSignOut}>Sign out</DropdownMenuItem>
+              <DropdownMenuItem onClick={onSignOut}>Sign Out</DropdownMenuItem>
             ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
-        <span className="ml-1 flex min-w-0 flex-1 flex-col">
-          <span className="text-base font-semibold">Lopsi Bot</span>
+        <div className="ml-1 flex min-w-0 flex-1 flex-col">
+          <h1 className="text-base font-semibold">Lopsi Bot</h1>
           <span className="text-muted-foreground flex items-center gap-1 text-xs">
             <span className="bg-online size-1.5 rounded-full" />
             <span className="truncate">{person.detail}</span>
           </span>
-        </span>
+        </div>
         <button
-          aria-label={searching ? "Close search" : "Search"}
+          aria-label={searching ? "Close Search" : "Search"}
           aria-pressed={searching}
           className="bg-background hover:bg-accent flex size-11 items-center justify-center rounded-full border transition-colors"
           onClick={() => {
@@ -347,11 +347,11 @@ export function MobileCrewList({
         </button>
         {changes ? (
           <button
-            aria-label="New crew member"
+            aria-label="New Crew Member"
             className="bg-primary text-primary-foreground flex size-11 items-center justify-center rounded-full transition-opacity hover:opacity-90 disabled:opacity-50"
             disabled={!changes.available}
             onClick={changes.onNewMember}
-            title={changes.available ? "New crew member" : changes.reason}
+            title={changes.available ? "New Crew Member" : changes.reason}
             type="button"
           >
             <PlusIcon className="size-[18px]" />
@@ -366,7 +366,7 @@ export function MobileCrewList({
             autoFocus
             className="bg-background placeholder:text-muted-foreground focus-visible:ring-ring/50 h-11 w-full rounded-full border px-4 text-sm outline-none focus-visible:ring-3"
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search crew"
+            placeholder="Search crew…"
             value={query}
           />
         </div>
@@ -390,7 +390,7 @@ export function MobileCrewList({
       ) : null}
 
       <div className="text-muted-foreground px-5 pt-2 pb-1.5 text-xs font-medium">
-        All crew
+        All Crew
       </div>
       <nav aria-label="Crew" className="flex flex-col px-2 pb-6">
         {visible.map((member) => (
@@ -421,7 +421,7 @@ export function MobileCrewList({
           </p>
         ) : null}
       </nav>
-    </div>
+    </main>
   );
 }
 

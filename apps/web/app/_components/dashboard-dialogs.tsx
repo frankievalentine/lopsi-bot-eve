@@ -1,14 +1,33 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { type ReactElement, useState } from "react";
 import type { Account } from "./account";
-import { ConnectionsDialog, type ConnectorSummary } from "./connections-dialog";
-import { MemberConfigDialog } from "./member-config-dialog";
+import type { ConnectorSummary } from "./connections-dialog";
 import {
   PendingChangesDialog,
   usePendingCount,
 } from "./pending-changes-dialog";
-import { SettingsDialog } from "./settings-dialog";
+
+// Most visits never open these, so each loads the first time it's opened.
+const ConnectionsDialog = dynamic(() =>
+  import("./connections-dialog").then((module) => module.ConnectionsDialog)
+);
+const MemberConfigDialog = dynamic(() =>
+  import("./member-config-dialog").then((module) => module.MemberConfigDialog)
+);
+const SettingsDialog = dynamic(() =>
+  import("./settings-dialog").then((module) => module.SettingsDialog)
+);
+
+/** True from the first time `open` is, so a dialog stays mounted to animate closed. */
+function useOpenedOnce(open: boolean): boolean {
+  const [opened, setOpened] = useState(open);
+  if (open && !opened) {
+    setOpened(true);
+  }
+  return opened;
+}
 
 type MemberDialogMode =
   | { readonly kind: "edit"; readonly memberId: string }
@@ -45,6 +64,9 @@ export function useDashboardDialogs({
   );
   const [pendingOpen, setPendingOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsOpened = useOpenedOnce(settingsOpen);
+  const connectionsOpened = useOpenedOnce(connectionsOpen);
+  const memberOpened = useOpenedOnce(memberDialog !== null);
   const canChange = changes?.available === true;
   const pending = usePendingCount(canChange);
   const hasConnectors = connectors.length > 0;
@@ -67,15 +89,17 @@ export function useDashboardDialogs({
 
   const dialogs = (
     <>
-      <SettingsDialog
-        onConnections={actions.openConnections}
-        onEdit={actions.openEdit}
-        onOpenChange={setSettingsOpen}
-        onPendingChanges={actions.openPendingChanges}
-        open={settingsOpen}
-        pendingCount={pending.count}
-      />
-      {hasConnectors ? (
+      {settingsOpened ? (
+        <SettingsDialog
+          onConnections={actions.openConnections}
+          onEdit={actions.openEdit}
+          onOpenChange={setSettingsOpen}
+          onPendingChanges={actions.openPendingChanges}
+          open={settingsOpen}
+          pendingCount={pending.count}
+        />
+      ) : null}
+      {hasConnectors && connectionsOpened ? (
         <ConnectionsDialog
           account={account}
           connectors={connectors}
@@ -85,12 +109,14 @@ export function useDashboardDialogs({
       ) : null}
       {canChange ? (
         <>
-          <MemberConfigDialog
-            mode={memberDialog ?? { kind: "new" }}
-            onOpenChange={(next) => !next && setMemberDialog(null)}
-            onPullRequest={pending.refresh}
-            open={memberDialog !== null}
-          />
+          {memberOpened ? (
+            <MemberConfigDialog
+              mode={memberDialog ?? { kind: "new" }}
+              onOpenChange={(next) => !next && setMemberDialog(null)}
+              onPullRequest={pending.refresh}
+              open={memberDialog !== null}
+            />
+          ) : null}
           <PendingChangesDialog
             onOpenChange={(next) => {
               setPendingOpen(next);

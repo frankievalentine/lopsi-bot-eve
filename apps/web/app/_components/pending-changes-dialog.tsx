@@ -17,7 +17,7 @@ import type { PullRequest } from "@/lib/github";
 import { pendingChanges } from "./config-actions";
 
 /**
- * How many of the dashboard's pull requests are open, for the Pending changes
+ * How many of the dashboard's pull requests are open, for the Pending Changes
  * badge. Refreshed on mount, when the tab regains focus (a merge on GitHub),
  * and when the caller asks; `null` while unknown or unavailable.
  */
@@ -91,7 +91,7 @@ export function PendingChangesDialog({
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Pending changes</DialogTitle>
+          <DialogTitle>Pending Changes</DialogTitle>
           <DialogDescription>
             Pull requests opened from the dashboard. Review and merge them on
             GitHub; Vercel deploys the merge.

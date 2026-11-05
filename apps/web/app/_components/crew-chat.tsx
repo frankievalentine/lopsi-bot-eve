@@ -289,7 +289,7 @@ export function CrewChat({
   };
 
   return (
-    <main className="flex h-svh min-h-[640px] min-w-0 flex-[999_1_560px] flex-col">
+    <main className="flex h-svh min-w-0 flex-[999_1_560px] flex-col" id="main">
       <header
         className={cn(
           "flex h-14 shrink-0 items-center gap-2.5 border-b pr-4",
@@ -298,7 +298,7 @@ export function CrewChat({
       >
         {onBack ? (
           <Button
-            aria-label="Back to crew"
+            aria-label="Back to Crew"
             onClick={onBack}
             size="icon"
             variant="ghost"
@@ -307,7 +307,7 @@ export function CrewChat({
           </Button>
         ) : null}
         <Mascot kind={member.mascot} mood={mood} size={28} />
-        <span className="text-[15px] font-semibold">{member.name}</span>
+        <h1 className="text-[15px] font-semibold">{member.name}</h1>
         <span className="text-muted-foreground flex-1 truncate text-[13px]">
           {member.role}
         </span>
@@ -325,11 +325,11 @@ export function CrewChat({
         />
         {onEdit ? <MemberMenu name={member.name} onEdit={onEdit} /> : null}
         <Button
-          aria-label="New chat"
+          aria-label="New Chat"
           disabled={activeSessionId === undefined}
           onClick={startNewChat}
           size="icon-sm"
-          title="New chat"
+          title="New Chat"
           variant="ghost"
         >
           <SquarePenIcon className="size-4" />
@@ -343,12 +343,12 @@ export function CrewChat({
               {agent.messages.length === 0 &&
               !isResuming &&
               errorMessage === undefined ? (
-                <ConversationEmptyState className="pt-24">
+                <ConversationEmptyState className="pt-24 [@media(max-height:500px)]:pt-4 [@media(max-height:500px)]:[&_[role=img]]:hidden">
                   <Mascot kind={member.mascot} mood={mood} size={96} />
                   <div className="space-y-1">
-                    <h3 className="text-base font-semibold">
-                      {member.name} is ready
-                    </h3>
+                    <h2 className="text-base font-semibold">
+                      {member.name} Is Ready
+                    </h2>
                     <p className="text-muted-foreground max-w-md text-sm">
                       Send a message to get started.
                     </p>
@@ -630,7 +630,7 @@ function ChatHistoryMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72">
         <p className="text-muted-foreground px-2 py-1.5 text-xs">
-          Chats in this browser
+          Chats in This Browser
         </p>
         <DropdownMenuSeparator />
         {chats.map((chat) => (
@@ -659,7 +659,7 @@ function EndedNotice({ onNewChat }: { readonly onNewChat: () => void }) {
     <div className="bg-muted/40 text-muted-foreground flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-sm">
       <span>This chat has ended. Start a new one to keep going.</span>
       <Button onClick={onNewChat} size="sm" variant="outline">
-        New chat
+        New Chat
       </Button>
     </div>
   );
@@ -679,7 +679,7 @@ function ErrorNotice({
     >
       <AlertCircleIcon className="text-destructive mt-0.5 size-4 shrink-0" />
       <div className="min-w-0">
-        <p className="font-medium">Something went wrong</p>
+        <p className="font-medium">Something Went Wrong</p>
         {/* Messages can carry long URLs; let them wrap anywhere. */}
         <p className="text-muted-foreground mt-0.5 [overflow-wrap:anywhere]">
           {message}
@@ -748,14 +748,15 @@ function Composer({
       >
         <PromptInputBody>
           <PromptInputTextarea
+            aria-label={`Message ${member.name}`}
             disabled={disabled}
             onChange={(event) =>
               onInput(event.currentTarget.value.trim().length > 0)
             }
             placeholder={
               onStop
-                ? `Add to what ${member.name} is doing; it reads this at its next step`
-                : `Message ${member.name}`
+                ? `Add to what ${member.name} is doing; it reads this at its next step…`
+                : `Message ${member.name}…`
             }
           />
         </PromptInputBody>

@@ -11,6 +11,11 @@ import {
   verifyAccessToken,
 } from "@/lib/access";
 import { auth } from "@/lib/auth";
+import {
+  clearFailures,
+  isLockedOut,
+  recordFailure,
+} from "@/lib/password-attempts";
 import { safeRedirect } from "./safe-redirect";
 
 /**
@@ -33,9 +38,18 @@ export async function signInWithPassword(
   ) {
     return null;
   }
-  if (!checkAccessPassword(password)) {
-    return "Incorrect password.";
+  // Vercel sets this header itself, so a visitor can't choose their address.
+  const address =
+    (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    "unknown";
+  if (isLockedOut(address)) {
+    return "Too many attempts. Wait 15 minutes, then try again.";
   }
+  if (!checkAccessPassword(password)) {
+    recordFailure(address);
+    return "Incorrect password. Check it with whoever shared it.";
+  }
+  clearFailures(address);
   (await cookies()).set(ACCESS_COOKIE, signAccessToken(), {
     httpOnly: true,
     maxAge: ACCESS_TOKEN_TTL_SECONDS,

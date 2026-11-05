@@ -10,6 +10,8 @@ One shared password, and nothing else to set up:
 | --- | --- |
 | `LOPSI_ACCESS_PASSWORD` | The password visitors enter before they reach the crew. At least 16 characters; generate one with `openssl rand -base64 32`. |
 
+After 10 wrong passwords from one address, that address waits 15 minutes. The count is kept in each server instance's memory, so it slows guessing rather than stopping it; the password's length is the real defense.
+
 Everyone with the password acts as the same identity, so they share chats and connection grants. Share it only with people who may see each other's work. Changing it signs everyone out.
 
 ## Production mode
