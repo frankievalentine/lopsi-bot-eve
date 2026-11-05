@@ -83,7 +83,7 @@ const CONNECT_LINK =
 /** Crew members per page in the Crew section's picker. */
 const CREW_PAGE_SIZE = 4;
 
-/** Shown under Channels, as its email channel, not as a connector too. */
+/** Shown once, under Channels: its connector is how the crew starts an email. */
 const RESEND = "resend";
 
 const TRAILING_PERIOD = /\.$/u;
@@ -380,9 +380,13 @@ function IntegrationsSection({
       <IntegrationGroup
         integrations={[
           {
-            active: Object.keys(status.email).length > 0,
-            description:
-              "Email the crew, and the crew emails back through Resend.",
+            // Either half counts: people emailing the crew, or the crew sending email.
+            active:
+              Object.keys(status.email).length > 0 ||
+              status.catalog.some(
+                (entry) => entry.id === RESEND && entry.configured
+              ),
+            description: "Email the crew, and have the crew send email.",
             guide: `${GUIDE}/integrations.md#email`,
             id: "email",
             name: "Resend",
