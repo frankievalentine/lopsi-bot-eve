@@ -4,6 +4,8 @@
 
 An [eve](https://eve.dev) template for Vercel: a crew of AI agents, each with its own instructions, tools and model, and the Lopsi Bot dashboard to talk to them.
 
+**[Try the demo](https://lopsi-bot.vercel.app)**: an example crew with scripted replies, so no sign-in and no model.
+
 ![The Lopsi Bot dashboard: a crew of six agents in the sidebar, a chat with Lopsi open](docs/images/dashboard.png)
 
 <img alt="Lopsi" height="56" src="docs/images/crew/skipper.svg" width="56"> <img alt="Scout" height="56" src="docs/images/crew/lookout.svg" width="56"> <img alt="Purser" height="56" src="docs/images/crew/purser.svg" width="56"> <img alt="Navigator" height="56" src="docs/images/crew/navigator.svg" width="56"> <img alt="Deckhand" height="56" src="docs/images/crew/deckhand.svg" width="56"> <img alt="Signal" height="56" src="docs/images/crew/signal.svg" width="56">
