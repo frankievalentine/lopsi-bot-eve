@@ -1,7 +1,7 @@
 import { cookies, headers } from "next/headers";
 import type { Account } from "@/app/_components/account";
 import { ACCESS_COOKIE, accessMode, verifyAccessToken } from "./access";
-import { auth } from "./auth";
+import { auth, isTrustedHost } from "./auth";
 import { isDemo } from "./demo";
 
 /**
@@ -10,10 +10,11 @@ import { isDemo } from "./demo";
  *
  * - an {@link Account} when they're signed in (or nobody needs to be: local development);
  * - `"sign-in-with-vercel"` when production mode needs them to sign in;
- * - `"login"` when starter mode needs the password, or the deployment is locked.
+ * - `"login"` when starter mode needs the password, or the deployment is locked;
+ * - `"unknown-address"` when production mode can't trust this address yet.
  */
 export async function currentAccount(): Promise<
-  Account | "sign-in-with-vercel" | "login"
+  Account | "sign-in-with-vercel" | "login" | "unknown-address"
 > {
   if (isDemo) {
     return { kind: "demo" };
@@ -30,7 +31,11 @@ export async function currentAccount(): Promise<
   }
 
   if (mode === "vercel") {
-    const session = await auth.api.getSession({ headers: await headers() });
+    const requestHeaders = await headers();
+    if (!isTrustedHost(requestHeaders.get("host"))) {
+      return "unknown-address";
+    }
+    const session = await auth.api.getSession({ headers: requestHeaders });
     if (!session) {
       return "sign-in-with-vercel";
     }

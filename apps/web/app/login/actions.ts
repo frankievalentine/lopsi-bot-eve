@@ -10,7 +10,7 @@ import {
   signAccessToken,
   verifyAccessToken,
 } from "@/lib/access";
-import { auth } from "@/lib/auth";
+import { auth, isTrustedHost } from "@/lib/auth";
 import {
   clearFailures,
   isLockedOut,
@@ -80,7 +80,12 @@ export async function signInDestination(path: string): Promise<string | null> {
     return null;
   }
   if (mode === "vercel") {
-    const session = await auth.api.getSession({ headers: await headers() });
+    const requestHeaders = await headers();
+    // The page itself explains an address it can't trust yet.
+    if (!isTrustedHost(requestHeaders.get("host"))) {
+      return safeRedirect(path);
+    }
+    const session = await auth.api.getSession({ headers: requestHeaders });
     // The page itself shows Sign in with Vercel when there is no session.
     return session ? null : safeRedirect(path);
   }
