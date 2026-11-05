@@ -40,8 +40,6 @@ Then add what you need, from a clone of your repository linked to the project (`
 | Sign in with Vercel, private chats, chat history, workspace snapshots | A private [Vercel Blob](https://vercel.com/docs/vercel-blob) store | `pnpm setup:sign-in` |
 | Email and messaging channels | [Upstash for Redis](https://vercel.com/marketplace/upstash), for conversation threads | `pnpm setup:email`, `pnpm setup:channel` |
 
-There's no database to set up: no Neon or Postgres. Starter mode needs nothing beyond the deploy; sign-in sessions are encrypted cookies, and history lives in Blob.
-
 ## Stack
 
 | | |
