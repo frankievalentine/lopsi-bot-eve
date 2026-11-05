@@ -129,8 +129,23 @@ async function regeneratedCrew(
   return crewSource(entries);
 }
 
+/** `value` with object keys sorted, so key order never counts as a difference. */
+function sortedKeys(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(sortedKeys);
+  }
+  if (typeof value === "object" && value !== null) {
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([a], [b]) => (a < b ? -1 : 1))
+        .map(([key, entry]) => [key, sortedKeys(entry)])
+    );
+  }
+  return value;
+}
+
 const sameJson = (a: unknown, b: unknown) =>
-  JSON.stringify(a) === JSON.stringify(b);
+  JSON.stringify(sortedKeys(a)) === JSON.stringify(sortedKeys(b));
 
 /**
  * The files for an edit to one member, or an empty object when nothing changed.
