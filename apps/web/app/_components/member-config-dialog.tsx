@@ -144,10 +144,23 @@ function configOf(form: Form, from: MemberConfig | undefined): MemberConfig {
   };
 }
 
+/** Warns before the page is left with unsaved changes. */
+function useUnsavedWarning(unsaved: boolean) {
+  useEffect(() => {
+    if (!unsaved) {
+      return;
+    }
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [unsaved]);
+}
+
 /** Loads what the dialog edits each time it opens: the member's config (when editing) and the model list. */
 function useMemberConfig(open: boolean, memberId: string | undefined) {
   const [from, setFrom] = useState<MemberConfig | undefined>();
   const [form, setForm] = useState<Form>(EMPTY_FORM);
+  const [loaded, setLoaded] = useState<Form>(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [models, setModels] = useState<readonly ModelOption[]>([]);
@@ -161,6 +174,7 @@ function useMemberConfig(open: boolean, memberId: string | undefined) {
     setLoadError(null);
     setFrom(undefined);
     setForm(EMPTY_FORM);
+    setLoaded(EMPTY_FORM);
     modelOptions()
       .then((list) => current && setModels(list))
       .catch(() => undefined);
@@ -179,6 +193,7 @@ function useMemberConfig(open: boolean, memberId: string | undefined) {
         if (result.ok) {
           setFrom(result.config);
           setForm(formOf(result.config));
+          setLoaded(formOf(result.config));
         } else {
           setLoadError(result.error);
         }
@@ -190,7 +205,7 @@ function useMemberConfig(open: boolean, memberId: string | undefined) {
     };
   }, [open, memberId]);
 
-  return { choices, form, from, loadError, loading, models, setForm };
+  return { choices, form, from, loadError, loaded, loading, models, setForm };
 }
 
 /** Opens the pull request for the form: a new member, or an edit from `from`. */
@@ -240,8 +255,9 @@ export function MemberConfigDialog({
   readonly open: boolean;
 }) {
   const memberId = mode.kind === "edit" ? mode.memberId : undefined;
-  const { choices, form, from, loadError, loading, models, setForm } =
+  const { choices, form, from, loaded, loadError, loading, models, setForm } =
     useMemberConfig(open, memberId);
+  const [discarding, setDiscarding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [pull, setPull] = useState<PullRequest | null>(null);
@@ -250,6 +266,7 @@ export function MemberConfigDialog({
     if (open) {
       setPull(null);
       setSubmitError(null);
+      setDiscarding(false);
     }
   }, [open]);
 
@@ -278,9 +295,24 @@ export function MemberConfigDialog({
   const editing = mode.kind === "edit";
   const ready = !(editing && from === undefined);
   const error = submitError ?? loadError;
+  const unsaved =
+    open && pull === null && JSON.stringify(form) !== JSON.stringify(loaded);
+  useUnsavedWarning(unsaved);
+
+  /** Closes, once any unsaved changes have been confirmed as discarded. */
+  const close = () => {
+    if (unsaved) {
+      setDiscarding(true);
+    } else {
+      onOpenChange(false);
+    }
+  };
 
   return (
-    <Dialog onOpenChange={onOpenChange} open={open}>
+    <Dialog
+      onOpenChange={(next) => (next ? onOpenChange(true) : close())}
+      open={open}
+    >
       <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-xl">
         {pull ? (
           <PullRequestOpened onClose={() => onOpenChange(false)} pull={pull} />
@@ -321,21 +353,41 @@ export function MemberConfigDialog({
               </p>
             )}
 
-            <DialogFooter>
-              <Button
-                onClick={() => onOpenChange(false)}
-                type="button"
-                variant="outline"
-              >
-                Cancel
-              </Button>
-              <Button
-                disabled={!ready || saving || !form.name.trim()}
-                type="submit"
-              >
-                {saving ? "Opening Pull Request…" : "Open Pull Request"}
-              </Button>
-            </DialogFooter>
+            {discarding ? (
+              <DialogFooter className="items-center sm:justify-between">
+                <span className="text-sm" role="alert">
+                  Discard your changes?
+                </span>
+                <span className="flex gap-2">
+                  <Button
+                    onClick={() => setDiscarding(false)}
+                    type="button"
+                    variant="outline"
+                  >
+                    Keep Editing
+                  </Button>
+                  <Button
+                    onClick={() => onOpenChange(false)}
+                    type="button"
+                    variant="destructive"
+                  >
+                    Discard Changes
+                  </Button>
+                </span>
+              </DialogFooter>
+            ) : (
+              <DialogFooter>
+                <Button onClick={close} type="button" variant="outline">
+                  Cancel
+                </Button>
+                <Button
+                  disabled={!ready || saving || !form.name.trim()}
+                  type="submit"
+                >
+                  {saving ? "Opening Pull Request…" : "Open Pull Request"}
+                </Button>
+              </DialogFooter>
+            )}
           </form>
         )}
       </DialogContent>

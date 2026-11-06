@@ -41,7 +41,6 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
-  usePromptInputController,
 } from "@/components/ai-elements/prompt-input";
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
@@ -726,7 +725,6 @@ function Composer({
   readonly onStop: (() => void) | undefined;
   readonly showSuggestions: boolean;
 }) {
-  const controller = usePromptInputController();
   const footnote = ACCESS_NOTES[account.kind];
 
   return (
@@ -735,11 +733,12 @@ function Composer({
         <Suggestions>
           {member.suggestions.map((suggestion) => (
             <Suggestion
+              disabled={disabled}
               key={suggestion}
-              // The demo only has scripts for these exact prompts, so they go straight out.
-              onClick={(value) =>
-                isDemo ? onSend(value) : controller.textInput.setInput(value)
-              }
+              // Failures show as the chat's error, as they do for a typed message.
+              onClick={(value) => {
+                onSend(value).catch(() => undefined);
+              }}
               suggestion={suggestion}
             />
           ))}
