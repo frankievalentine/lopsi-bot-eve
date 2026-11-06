@@ -61,6 +61,7 @@ Then add what you need, from a clone of your repository linked to the project (`
 - [docs/integrations.md](docs/integrations.md): connectors, email and messaging channels.
 - [docs/crew.md](docs/crew.md): adding crew members, Settings, changing the crew from the dashboard.
 - [docs/development.md](docs/development.md): running locally and checks.
+- [docs/updating.md](docs/updating.md): getting a newer version of the template.
 - [docs/removing.md](docs/removing.md): pausing a project, or removing it and what setup made for it.
 - [ARCHITECTURE.md](ARCHITECTURE.md): how it fits together, and the security model.
 
