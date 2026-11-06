@@ -201,6 +201,7 @@ function GeneralSection({
         <Row label="Chat History">
           {status.history ? "On the Server" : "In Each Browser"}
         </Row>
+        <VersionRow status={status} />
         <PullRequestsRow
           onPending={onPending}
           pendingCount={pendingCount}
@@ -220,6 +221,30 @@ function GeneralSection({
         </Group>
       ) : null}
     </>
+  );
+}
+
+function VersionRow({ status }: { readonly status: SettingsStatus }) {
+  const { update, version } = status;
+  if (update === undefined) {
+    return <Row label="Version">{`v${version}`}</Row>;
+  }
+  return (
+    <Row
+      hint={`You're on v${version}.`}
+      label={
+        update.security ? (
+          <span className="text-destructive font-medium">
+            Security Update Available: v{update.version}
+          </span>
+        ) : (
+          `Update Available: v${update.version}`
+        )
+      }
+    >
+      <External href={update.url}>Release Notes</External>
+      <External href={`${GUIDE}/updating.md`}>How to Update</External>
+    </Row>
   );
 }
 

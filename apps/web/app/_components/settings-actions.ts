@@ -13,6 +13,11 @@ import { emailSetup } from "@/lib/email";
 import { configChangesUnavailable, targetRepository } from "@/lib/github";
 import { isProductionMode } from "@/lib/production-mode";
 import { sessionBudgetUsd } from "@/lib/session-budget";
+import {
+  checkForUpdate,
+  TEMPLATE_VERSION,
+  type TemplateUpdate,
+} from "@/lib/template-version";
 
 /** How this deployment is set up, as the Settings dialog shows it. */
 export interface SettingsStatus {
@@ -46,6 +51,10 @@ export interface SettingsStatus {
   readonly removable: boolean;
   /** `owner/repo@branch` that pull requests go to. */
   readonly repository?: string;
+  /** A newer release of the template, if GitHub reports one. */
+  readonly update?: TemplateUpdate;
+  /** The template version this deployment is built from. */
+  readonly version: string;
 }
 
 /** This request's origin, so the server can call the deployed agents. */
@@ -100,6 +109,7 @@ function demoSettings() {
       local: false,
       removable: false,
       repository: "frankievalentine/lopsi-bot-eve@main",
+      version: TEMPLATE_VERSION,
     },
   };
 }
@@ -124,6 +134,7 @@ export async function loadSettings(): Promise<
     return { error: "Sign in to see settings.", ok: false };
   }
   const origin = await originOf();
+  const update = await checkForUpdate();
   const setups = await Promise.all(
     CREW.map(
       async (member) =>
@@ -155,6 +166,8 @@ export async function loadSettings(): Promise<
         .filter((entry) => entry.trim()).length,
       github: configChangesUnavailable() === undefined,
       history: isProductionMode(),
+      version: TEMPLATE_VERSION,
+      ...(update === undefined ? {} : { update }),
       local: account.kind === "open",
       removable:
         account.kind !== "open" && process.env.VERCEL_ENV === "production",
