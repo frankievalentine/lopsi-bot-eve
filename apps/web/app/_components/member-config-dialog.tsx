@@ -354,7 +354,7 @@ export function MemberConfigDialog({
             )}
 
             {discarding ? (
-              <DialogFooter className="items-center sm:justify-between">
+              <DialogFooter className="sticky -bottom-4 z-10 items-center sm:justify-between">
                 <span className="text-sm" role="alert">
                   Discard your changes?
                 </span>
@@ -376,7 +376,7 @@ export function MemberConfigDialog({
                 </span>
               </DialogFooter>
             ) : (
-              <DialogFooter>
+              <DialogFooter className="sticky -bottom-4 z-10">
                 <Button onClick={close} type="button" variant="outline">
                   Cancel
                 </Button>
