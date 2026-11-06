@@ -233,10 +233,9 @@ export function Mascot({
 
   return (
     <svg
-      aria-label={name}
+      {...(name ? { "aria-label": name, role: "img" } : { "aria-hidden": true })}
       className={className}
       height={size}
-      role="img"
       style={{ flexShrink: 0 }}
       viewBox="0 0 100 100"
       width={size}

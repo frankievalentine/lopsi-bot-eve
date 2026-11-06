@@ -214,11 +214,11 @@ export function CrewSidebar({
                   <span className="flex-1 text-sm font-medium">
                     {member.name}
                   </span>
-                  <span className="text-muted-foreground text-xs">
+                  <span className="text-sidebar-foreground/70 text-xs">
                     {timeOf(member, history)}
                   </span>
                 </span>
-                <span className="text-muted-foreground truncate text-[13px]">
+                <span className="text-sidebar-foreground/70 truncate text-[13px]">
                   {previewOf(member, history)}
                 </span>
               </span>
