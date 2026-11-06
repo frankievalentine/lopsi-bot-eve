@@ -26,8 +26,9 @@
     "setup:email": "node scripts/setup-email.mjs",
     "setup:sign-in": "node scripts/setup-sign-in.mjs",
     "start": "eve start",
+    "test": "vitest run",
     "typecheck": "tsc && tsc -p apps/web",
-    "validate": "node scripts/crew.mjs --check && pnpm run check && pnpm run typecheck && pnpm run knip && eve info --agent lopsi"
+    "validate": "node scripts/crew.mjs --check && pnpm run check && pnpm run typecheck && pnpm run knip && pnpm run test && eve info --agent lopsi"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
@@ -73,7 +74,8 @@
     "just-bash": "^3.6.0",
     "knip": "^6.44.1",
     "typescript": "6.0.3",
-    "ultracite": "^8.1.1"
+    "ultracite": "^8.1.1",
+    "vitest": "5.1.0"
   },
   "packageManager": "pnpm@12.16.1",
   "engines": {

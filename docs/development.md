@@ -22,7 +22,8 @@ Build with `NEXT_PUBLIC_LOPSI_DEMO=1` for a public demo: the dashboard opens to 
 ## Checks
 
 ```sh
-pnpm validate   # Ultracite, TypeScript, knip, eve info
+pnpm validate   # Ultracite, TypeScript, knip, tests, eve info
+pnpm test       # Only the tests
 pnpm build      # eve build, then the web app
 pnpm eval --tag fast
 ```
