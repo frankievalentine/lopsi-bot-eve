@@ -292,7 +292,15 @@ export function CrewChat({
   };
 
   return (
-    <main className="flex h-svh min-w-0 flex-[999_1_560px] flex-col" id="main">
+    <main
+      className={cn(
+        "flex min-w-0 flex-[999_1_560px] flex-col",
+        // On a phone, pinned to the visible window: its toolbars come and go,
+        // and only the replies scroll.
+        onBack ? "fixed inset-x-0 top-0 h-dvh" : "h-svh"
+      )}
+      id="main"
+    >
       <header
         className={cn(
           "flex h-14 shrink-0 items-center gap-2.5 border-b pr-4",
@@ -341,7 +349,7 @@ export function CrewChat({
 
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
-          <Conversation className="min-h-0">
+          <Conversation className="min-h-0 [&>div]:overscroll-contain">
             <ConversationContent className="mx-auto w-full max-w-3xl gap-8 px-5 py-8">
               {agent.messages.length === 0 &&
               !isResuming &&
@@ -757,6 +765,7 @@ function Composer({
         <PromptInputBody>
           <PromptInputTextarea
             aria-label={`Message ${member.name}`}
+            className="max-[879px]:min-h-11"
             disabled={disabled}
             onChange={(event) =>
               onInput(event.currentTarget.value.trim().length > 0)

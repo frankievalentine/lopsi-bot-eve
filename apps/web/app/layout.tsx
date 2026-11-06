@@ -34,6 +34,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  // Where supported, the keyboard shrinks the page, keeping the composer above it.
+  interactiveWidget: "resizes-content",
   themeColor: [
     { color: "#ffffff", media: "(prefers-color-scheme: light)" },
     { color: "#0a0a0a", media: "(prefers-color-scheme: dark)" },
