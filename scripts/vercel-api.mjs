@@ -105,6 +105,40 @@ export function saveEnvs(api, projectId, writes) {
   }
 }
 
+/**
+ * Makes `key` a Secret wherever it's stored in a way the dashboard can show, as
+ * some Vercel commands leave what they create. The value is read and written back
+ * unchanged through the request body, and is never printed. Development can't
+ * hold a Secret, so a variable that includes it stays as it is.
+ *
+ * @returns {{ converted: number, skipped: number }}
+ */
+export function protectEnv(api, projectId, key) {
+  const project = encodeURIComponent(projectId);
+  const rows = projectEnvs(api, projectId).filter(
+    (env) => env.key === key && env.type !== "sensitive"
+  );
+  let converted = 0;
+  let skipped = 0;
+  for (const row of rows) {
+    const target = [row.target].flat();
+    const id = encodeURIComponent(row.id);
+    const value = target.includes("development")
+      ? undefined
+      : api(`/v1/projects/${project}/env/${id}`).value;
+    if (value) {
+      api(`/v9/projects/${project}/env/${id}`, {
+        body: { target, type: "sensitive", value },
+        method: "PATCH",
+      });
+      converted += 1;
+    } else {
+      skipped += 1;
+    }
+  }
+  return { converted, skipped };
+}
+
 /** Whether `key` is set for every one of `targets`. */
 export function hasEnvEverywhere(envs, key, targets) {
   return targets.every((target) => hasEnv(envs, key, target));
