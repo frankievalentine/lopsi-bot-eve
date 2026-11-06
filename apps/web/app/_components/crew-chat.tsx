@@ -765,7 +765,7 @@ function Composer({
         <PromptInputBody>
           <PromptInputTextarea
             aria-label={`Message ${member.name}`}
-            className="max-[879px]:min-h-11"
+            className="max-[879px]:min-h-11 max-[879px]:placeholder:text-sm"
             disabled={disabled}
             onChange={(event) =>
               onInput(event.currentTarget.value.trim().length > 0)
