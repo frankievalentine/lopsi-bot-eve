@@ -1,6 +1,6 @@
-<img alt="Lopsi Bot" height="96" src="apps/web/public/l-mark.svg" width="96">
-
 # Lopsi Bot
+
+<img alt="Lopsi Bot" height="96" src="apps/web/public/l-mark.svg" width="96">
 
 An [eve](https://eve.dev) template for Vercel: a crew of AI agents, each with its own instructions, tools and model, and the Lopsi Bot dashboard to talk to them.
 
