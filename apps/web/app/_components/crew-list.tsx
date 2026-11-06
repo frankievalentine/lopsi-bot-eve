@@ -319,8 +319,12 @@ export function MobileCrewList({
   const person = personOf(account);
 
   return (
-    <main className="bg-background flex min-h-svh flex-col" id="main">
-      <header className="flex items-center gap-2 px-4 pt-5 pb-2">
+    <main
+      // Pinned to the visible window: only the list below scrolls.
+      className="bg-background fixed inset-x-0 top-0 flex h-dvh flex-col"
+      id="main"
+    >
+      <header className="flex shrink-0 items-center gap-2 px-4 pt-5 pb-2">
         <DropdownMenu>
           <DropdownMenuTrigger
             aria-label={`${person.name}: account`}
@@ -385,7 +389,7 @@ export function MobileCrewList({
       </header>
 
       {searching ? (
-        <div className="px-4 pt-2">
+        <div className="shrink-0 px-4 pt-2">
           <input
             aria-label="Search crew"
             autoFocus
@@ -398,7 +402,7 @@ export function MobileCrewList({
       ) : null}
 
       {featured.length > 0 ? (
-        <div className="grid grid-cols-3 gap-2 px-4 pt-4 pb-5">
+        <div className="grid shrink-0 grid-cols-3 gap-2 px-4 pt-4 pb-5">
           {featured.map((member) => (
             <Link
               className="bg-muted/60 hover:bg-muted flex flex-col items-center gap-2 rounded-[14px] px-1 py-3 transition-colors"
@@ -414,10 +418,13 @@ export function MobileCrewList({
         </div>
       ) : null}
 
-      <div className="text-muted-foreground px-5 pt-2 pb-1.5 text-xs font-medium">
+      <div className="text-muted-foreground shrink-0 px-5 pt-2 pb-1.5 text-xs font-medium">
         All Crew
       </div>
-      <nav aria-label="Crew" className="flex flex-col px-2 pb-6">
+      <nav
+        aria-label="Crew"
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-2 pb-6"
+      >
         {visible.map((member) => (
           <Link
             className="hover:bg-accent flex min-h-16 items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors"
