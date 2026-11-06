@@ -73,10 +73,13 @@ function PendingBadge({ count }: { readonly count: number }) {
 
 /** The person in the list's footer or header. */
 /** The demo's way to a real crew, with Vercel's own button; nothing outside demo mode. */
-function DeployButton() {
+function DeployButton({ className }: { readonly className?: string }) {
   return isDemo ? (
     <a
-      className="focus-visible:ring-ring/50 shrink-0 rounded-md transition-opacity outline-none hover:opacity-85 focus-visible:ring-3"
+      className={cn(
+        "focus-visible:ring-ring/50 shrink-0 rounded-md transition-opacity outline-none hover:opacity-85 focus-visible:ring-3",
+        className
+      )}
       href={DEPLOY_URL}
       rel="noreferrer"
       target="_blank"
@@ -169,7 +172,6 @@ export function CrewSidebar({
           Lopsi Bot
         </span>
         <span className="flex-1" />
-        <DeployButton />
         {changes ? (
           <Button
             aria-label="New Crew Member"
@@ -241,6 +243,7 @@ export function CrewSidebar({
       </nav>
 
       <div className="border-sidebar-border flex flex-col gap-0.5 border-t px-3 py-2.5">
+        <DeployButton className="mx-2 mb-1.5 w-fit" />
         {changes ? (
           <button
             className="hover:bg-sidebar-accent flex w-full items-center gap-2.5 rounded-md p-2 text-left text-sm transition-colors disabled:opacity-50"
