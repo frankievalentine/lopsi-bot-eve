@@ -9,7 +9,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["apps/web/**/*.test.ts"],
+    include: ["apps/web/**/*.test.ts", "scripts/**/*.test.mjs"],
     restoreMocks: true,
     unstubEnvs: true,
   },
