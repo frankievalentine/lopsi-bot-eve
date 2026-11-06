@@ -21,8 +21,11 @@ const PROMPTS = [
 
 type Branch = "approved" | "denied";
 
-function flat(beats: readonly DemoBeat[], branch: Branch): DemoBeat[] {
-  const walk = (list: readonly DemoBeat[]): DemoBeat[] =>
+/** A beat that plays straight through, not one waiting on an answer. */
+type PlayedBeat = Exclude<DemoBeat, { interactionId: string }>;
+
+function flat(beats: readonly DemoBeat[], branch: Branch): PlayedBeat[] {
+  const walk = (list: readonly DemoBeat[]): PlayedBeat[] =>
     list.flatMap((beat) =>
       "interactionId" in beat ? walk(beat[branch]) : [beat]
     );
