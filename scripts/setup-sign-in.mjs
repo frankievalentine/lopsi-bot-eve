@@ -22,7 +22,13 @@
 
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { createApi, fail, readLinkedProject, saveEnvs } from "./vercel-api.mjs";
+import {
+  createApi,
+  fail,
+  protectEnv,
+  readLinkedProject,
+  saveEnvs,
+} from "./vercel-api.mjs";
 
 const CALLBACK_PATH = "/api/auth/callback/vercel";
 const PROJECT_ID_PREFIX = /^prj_/u;
@@ -193,6 +199,7 @@ function ensureOwnerStore(project, forTarget) {
     OWNER_STORE_KEYS.some((key) => forTarget(key, target));
   if (TARGETS.every(connected)) {
     console.log("  Chat owner store: already connected");
+    protectStoreToken(project.id);
     return;
   }
   const name = `${project.name.slice(0, 40)}-chat-owners`
@@ -233,4 +240,28 @@ function ensureOwnerStore(project, forTarget) {
     );
   }
   console.log("  Chat owner store: connected to production and preview");
+  protectStoreToken(project.id);
+}
+
+/**
+ * The store's token reaches every chat, but `vercel blob create-store` saves it
+ * where the dashboard shows it, so it becomes a Secret. A failure doesn't stop
+ * setup, and its details aren't printed: they could hold the token.
+ */
+function protectStoreToken(id) {
+  try {
+    const { converted, skipped } = protectEnv(api, id, "BLOB_READ_WRITE_TOKEN");
+    if (converted > 0) {
+      console.log("  Chat owner store: token saved as a Secret");
+    }
+    if (skipped > 0) {
+      console.warn(
+        "  BLOB_READ_WRITE_TOKEN is still visible in the dashboard. Save it as a Secret in your project's environment variables."
+      );
+    }
+  } catch {
+    console.warn(
+      "  Couldn't save BLOB_READ_WRITE_TOKEN as a Secret. Do that in your project's environment variables."
+    );
+  }
 }
