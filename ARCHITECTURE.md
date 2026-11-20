@@ -24,6 +24,7 @@ agents/
     evals/
       evals.config.ts       # run-wide eval defaults
       smoke.eval.ts         # a greeting succeeds without shell commands
+      web-fetch/            # web_fetch asks first, a denial never runs, a page can't trigger another fetch (stubbed pages)
 apps/
   web/                      # Next.js dashboard (started from `eve add channel/web`)
     app/
@@ -97,7 +98,7 @@ vercel.ts                   # Vercel Services: the web service and the eve agent
 
 ## Security considerations
 
-- **Route auth** (`agents/<name>/agent/channels/eve.ts`), in order: the Better Auth session (production mode only); Vercel OIDC for this deployment's own runtime callers and per-person eve CLI tokens, which get the chat owner check in production mode (project tokens from another environment, such as a pulled development token, are refused); `localDev()` for localhost during development only; `accessCookieAuth()` for the starter-mode cookie (skipped in production mode); `placeholderAuth()` rejects everything else. A deployment with neither mode configured accepts no browser traffic.
+- **Route auth** (`agents/<name>/agent/channels/eve.ts`), in order: the Better Auth session (production mode only); Vercel OIDC for this deployment's own runtime callers and per-person eve CLI tokens, which get the chat owner check in production mode (project tokens from another environment, such as a pulled development token, are refused); `localDev()` for localhost during development only, which may also stub tools so local evals need no network; `accessCookieAuth()` for the starter-mode cookie (skipped in production mode); `placeholderAuth()` rejects everything else. A deployment with neither mode configured accepts no browser traffic.
 - **Production mode**: the Vercel App is created with `signInFrom: "owning-team"`, so Vercel itself refuses sign-in to anyone outside the project's team. Better Auth is stateless (an encrypted cookie, 8-hour sessions, no refresh), so there is no database. While production mode is configured, a leftover `LOPSI_ACCESS_PASSWORD` admits nobody: password checks, token minting and token verification all refuse. Without its credentials, `lib/auth.ts` builds an instance with throwaway secrets and a reserved host, so a starter deployment and a local `next build` work, and its routes answer 404.
 - **Starter mode** (`apps/web/lib/access.ts`): the password is compared in constant time; the cookie is httpOnly, `SameSite=Lax`, and holds an HS256 token whose key is derived from the password. Every holder is the single principal `lopsi:operator`, so sessions and connection grants are shared. Passwords shorter than 16 characters are treated as unset. Cross-site requests are rejected even with a valid cookie. Sign-in is not rate limited; the length floor is what keeps guessing impractical.
 - **Agent reach** (`agents/<name>/agent/`): `sandbox.ts` opens each session's sandbox with `networkPolicy: "deny-all"` on Vercel (its `prepare` makes the build capture a snapshot, so sandboxes start without setup); `tools/web_fetch.ts` wraps eve's web_fetch, which runs in the app outside that policy, with `always()` approval; `limits.ts` caps spend per window at `LOPSI_SESSION_BUDGET_USD`.
