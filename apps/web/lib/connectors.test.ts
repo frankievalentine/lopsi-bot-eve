@@ -21,6 +21,10 @@ describe("connectorApproval", () => {
     ["no annotations", undefined],
     ["no readOnlyHint", { title: "Delete" }],
     ["readOnlyHint false", { readOnlyHint: false }],
+    [
+      "readOnlyHint and destructiveHint",
+      { destructiveHint: true, readOnlyHint: true },
+    ],
   ])("asks for a tool with %s", (_case, toolAnnotations) => {
     expect(approval({ toolAnnotations, toolName: "mail__delete-email" })).toBe(
       "user-approval"
@@ -35,6 +39,15 @@ describe("connectorApproval", () => {
       ).toBe("user-approval");
     }
   );
+
+  it("runs a read-only tool that says it isn't destructive", () => {
+    expect(
+      approval({
+        toolAnnotations: { destructiveHint: false, readOnlyHint: true },
+        toolName: "mail__list-emails",
+      })
+    ).toBe("not-applicable");
+  });
 
   it("only strips its own connector's prefix", () => {
     expect(

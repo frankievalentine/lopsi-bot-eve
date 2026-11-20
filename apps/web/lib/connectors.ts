@@ -66,7 +66,7 @@ export function configuredConnectors(): readonly ConfiguredConnector[] {
 /**
  * A connector's approval policy (agents/<name>/agent/connections/services.ts):
  * read-only tools run; everything else waits for a person, including tools the
- * server says nothing about. Annotations are the server's own hints; a tool on
+ * server says nothing about and ones it calls both read-only and destructive. Annotations are the server's own hints; a tool on
  * the connector's `approve` list always asks, whatever its hints say.
  */
 export function connectorApproval(
@@ -84,7 +84,12 @@ export function connectorApproval(
     const name = toolName.startsWith(prefix)
       ? toolName.slice(prefix.length)
       : toolName;
-    return alwaysAsk.has(name) || toolAnnotations?.readOnlyHint !== true
+    // A tool that also claims to be destructive contradicts itself; ask. MCP
+    // defaults destructiveHint to true, so only an explicit true counts.
+    const readOnly =
+      toolAnnotations?.readOnlyHint === true &&
+      toolAnnotations.destructiveHint !== true;
+    return alwaysAsk.has(name) || !readOnly
       ? "user-approval"
       : "not-applicable";
   };
