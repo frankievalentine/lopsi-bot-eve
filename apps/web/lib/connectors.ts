@@ -7,6 +7,7 @@
  * @packageDocumentation
  */
 
+import type { ConnectionToolAnnotations } from "eve/tools/approval";
 import catalog from "./connectors.json";
 
 interface Connector {
@@ -60,6 +61,33 @@ export function configuredConnectors(): readonly ConfiguredConnector[] {
     const uid = process.env[connector.variable]?.trim();
     return uid ? [{ ...connector, uid }] : [];
   });
+}
+
+/**
+ * A connector's approval policy (agents/<name>/agent/connections/services.ts):
+ * read-only tools run; everything else waits for a person, including tools the
+ * server says nothing about. Annotations are the server's own hints; a tool on
+ * the connector's `approve` list always asks, whatever its hints say.
+ */
+export function connectorApproval(
+  connector: Pick<Connector, "approve" | "id">
+) {
+  const alwaysAsk = new Set(connector.approve ?? []);
+  const prefix = `${connector.id}__`;
+  return ({
+    toolAnnotations,
+    toolName,
+  }: {
+    readonly toolAnnotations?: ConnectionToolAnnotations;
+    readonly toolName: string;
+  }): "user-approval" | "not-applicable" => {
+    const name = toolName.startsWith(prefix)
+      ? toolName.slice(prefix.length)
+      : toolName;
+    return alwaysAsk.has(name) || toolAnnotations?.readOnlyHint !== true
+      ? "user-approval"
+      : "not-applicable";
+  };
 }
 
 /** The parts of a caller Vercel Connect keys a person's grant by. */
