@@ -24,7 +24,11 @@ export const environment = DefaultSandbox.environment({
   },
 });
 
-function networkPolicy() {
+/**
+ * Also applied to chats already open, before each shell command
+ * (hooks/network.ts), since a resumed sandbox keeps the policy it began with.
+ */
+export function networkPolicy() {
   return ALLOWED_DOMAINS.length === 0
     ? "deny-all"
     : {
