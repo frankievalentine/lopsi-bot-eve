@@ -267,8 +267,7 @@ export function AccessFields({
               <Hint>
                 Domains the shell may reach on Vercel, one per line (such as
                 registry.npmjs.org). Empty means no network. Each domain is a
-                way out for data the crew reads. A change reaches new chats;
-                chats already open keep the network they started with.
+                way out for data the crew reads.
               </Hint>
               <Textarea
                 className="min-h-16 font-mono text-[13px]"
