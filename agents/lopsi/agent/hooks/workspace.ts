@@ -8,7 +8,7 @@ import {
 
 const WORKSPACE = "/workspace";
 /** Tools that change the workspace; a turn without them leaves the sandbox asleep. */
-const CHANGES_FILES = new Set(["bash", "write_file"]);
+const CHANGES_FILES = new Set(["bash", "edit_file", "write_file"]);
 const MAX_FILES = 500;
 const MAX_FILE_BYTES = 128 * 1024;
 const MAX_TOTAL_BYTES = 1.5 * 1024 * 1024;
@@ -66,8 +66,8 @@ function withinBudget(
 }
 
 /**
- * Snapshots the chat's workspace after a turn that used the shell or wrote a
- * file, for the computer panel (apps/web/lib/workspace-store.ts), so it shows
+ * Snapshots the chat's workspace after a turn that used the shell or wrote or
+ * edited a file, for the computer panel (apps/web/lib/workspace-store.ts), so it shows
  * files the shell made too. Production mode only; a failure never fails the
  * turn.
  */
