@@ -335,6 +335,7 @@ function LinkButton({
 }) {
   return (
     <Button
+      nativeButton={false}
       render={<a href={href} rel="noreferrer" target="_blank" />}
       size="xs"
       variant={variant}
@@ -1022,6 +1023,7 @@ function MemberDetail({
           ) : null}
         </div>
         <Button
+          nativeButton={false}
           render={
             <Link
               href={`/c/${encodeURIComponent(member.id)}`}
