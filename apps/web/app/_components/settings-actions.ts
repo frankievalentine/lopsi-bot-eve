@@ -35,7 +35,13 @@ import { emailDomain, emailSetup, redisStateUrl } from "@/lib/email";
 import { configChangesUnavailable, targetRepository } from "@/lib/github";
 import { grantHolder } from "@/lib/grant-holder";
 import { isProductionMode } from "@/lib/production-mode";
-import { sessionBudgetUsd } from "@/lib/session-budget";
+import {
+  BUDGET_VARIABLE,
+  MAX_BUDGET_USD,
+  MIN_BUDGET_USD,
+  parseBudgetUsd,
+  sessionBudgetUsd,
+} from "@/lib/session-budget";
 import {
   checkForUpdate,
   TEMPLATE_VERSION,
@@ -50,6 +56,8 @@ import {
 /** How this deployment is set up, as the Settings dialog shows it. */
 export interface SettingsStatus {
   readonly access: AccessMode | "demo";
+  /** Whether Settings can change the budget: a deployment with VERCEL_TOKEN, not local development or the demo. */
+  readonly budgetEditable: boolean;
   readonly budgetUsd: number;
   /** The Vercel Connect connectors attached to this project, or why they can't be listed. */
   readonly connectors:
@@ -280,6 +288,7 @@ function demoSettings() {
     ),
     status: {
       access: "demo" as const,
+      budgetEditable: false,
       budgetUsd: 1,
       connectors: {
         list: [
@@ -364,6 +373,8 @@ export async function loadSettings(): Promise<
     setups: setupsById,
     status: {
       access: accessMode(),
+      budgetEditable:
+        account.kind !== "open" && Boolean(process.env.VERCEL_TOKEN?.trim()),
       budgetUsd: sessionBudgetUsd(),
       connectors: listing.ok
         ? {
@@ -492,4 +503,42 @@ export async function saveAllowedSenders(
   }
   const { error } = await saveSenders(list, entries);
   return error === undefined ? { ok: true } : { error, ok: false };
+}
+
+/**
+ * Sets the spend per chat before it asks to continue: saves
+ * LOPSI_SESSION_BUDGET_USD and deploys production again, since a running
+ * deployment only reads its variables when it starts.
+ */
+export async function setSessionBudget(
+  input: string
+): Promise<
+  | { readonly ok: true; readonly usd: number }
+  | { readonly error: string; readonly ok: false }
+> {
+  if (!(await mayChange())) {
+    return { error: "Sign in to change the budget.", ok: false };
+  }
+  const usd = parseBudgetUsd(input);
+  if (usd === undefined) {
+    return {
+      error: `Enter an amount from $${MIN_BUDGET_USD.toFixed(2)} to $${MAX_BUDGET_USD.toFixed(2)}.`,
+      ok: false,
+    };
+  }
+  const target = await deploymentTarget();
+  if (target === undefined) {
+    return { error: "This deployment's project isn't known.", ok: false };
+  }
+  try {
+    await setProjectVariable(target, BUDGET_VARIABLE, usd.toFixed(2));
+    await redeploy(target);
+    return { ok: true, usd };
+  } catch (error) {
+    console.error("[lopsi] couldn't set the chat budget:", error);
+    return {
+      error: "Vercel refused. Check that VERCEL_TOKEN can manage the project.",
+      ok: false,
+    };
+  }
 }
