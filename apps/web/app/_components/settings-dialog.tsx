@@ -34,6 +34,7 @@ import {
   loadSettings,
   type SettingsStatus,
   saveAllowedSenders,
+  setSessionBudget,
   turnOnEmail,
 } from "./settings-actions";
 
@@ -897,18 +898,99 @@ function IntegrationsSection({
   );
 }
 
+/** The spend per chat before it asks to continue, with Edit where Settings can change it. */
+function BudgetRow({ status }: { readonly status: SettingsStatus }) {
+  const [editing, setEditing] = useState(false);
+  const [amount, setAmount] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<number | null>(null);
+  const current = `$${status.budgetUsd.toFixed(2)}`;
+  const save = () => {
+    setBusy(true);
+    setError(null);
+    setSessionBudget(amount)
+      .then((result) => {
+        if (result.ok) {
+          setSaved(result.usd);
+          setEditing(false);
+        } else {
+          setError(result.error);
+        }
+      })
+      .catch(() => setError("Couldn't save the budget."))
+      .finally(() => setBusy(false));
+  };
+  const hint =
+    saved === null
+      ? "Model spend before a chat asks whether to continue."
+      : `Saved $${saved.toFixed(2)}. Production is redeploying; it applies in about a minute.`;
+  return (
+    <Row hint={hint} label="Budget per Chat">
+      {editing ? (
+        <form
+          className="flex items-center gap-1.5"
+          onSubmit={(event) => {
+            event.preventDefault();
+            save();
+          }}
+        >
+          <Input
+            aria-label="Budget per chat, in US dollars"
+            className="h-7 w-24 text-xs tabular-nums"
+            disabled={busy}
+            inputMode="decimal"
+            onChange={(event) => setAmount(event.target.value)}
+            placeholder={status.budgetUsd.toFixed(2)}
+            value={amount}
+          />
+          <Button disabled={busy || !amount.trim()} size="xs" type="submit">
+            {busy ? "Saving…" : "Save"}
+          </Button>
+          <Button
+            disabled={busy}
+            onClick={() => {
+              setEditing(false);
+              setError(null);
+            }}
+            size="xs"
+            type="button"
+            variant="ghost"
+          >
+            Cancel
+          </Button>
+        </form>
+      ) : (
+        <>
+          <span className="text-foreground tabular-nums">{current}</span>
+          {status.budgetEditable ? (
+            <Button
+              onClick={() => {
+                setAmount("");
+                setEditing(true);
+              }}
+              size="xs"
+              variant="outline"
+            >
+              Edit
+            </Button>
+          ) : null}
+        </>
+      )}
+      {error ? (
+        <p className="text-destructive w-full text-xs" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </Row>
+  );
+}
+
 function UsageSection({ status }: { readonly status: SettingsStatus }) {
   return (
     <>
       <Group>
-        <Row
-          hint="Model spend before a chat asks whether to continue."
-          label="Budget per Chat"
-        >
-          <span className="text-foreground tabular-nums">
-            {`$${status.budgetUsd.toFixed(2)}`}
-          </span>
-        </Row>
+        <BudgetRow status={status} />
       </Group>
       <Group title="On Vercel">
         {USAGE_LINKS.map((link) => (
