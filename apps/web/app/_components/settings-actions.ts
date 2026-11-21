@@ -31,6 +31,7 @@ import {
 import { CREW } from "@/lib/crew";
 import { currentAccount } from "@/lib/current-account";
 import { isDemo } from "@/lib/demo";
+import { DEMO_ICONS } from "@/lib/demo-icons";
 import { emailDomain, emailSetup, redisStateUrl } from "@/lib/email";
 import { configChangesUnavailable, targetRepository } from "@/lib/github";
 import { grantHolder } from "@/lib/grant-holder";
@@ -284,6 +285,7 @@ function demoSettings() {
       connectors: {
         list: [
           {
+            icon: DEMO_ICONS.linear,
             id: "scl_demo_linear",
             kind: "mcp" as const,
             name: "linear",
@@ -292,6 +294,7 @@ function demoSettings() {
             title: "Linear",
           },
           {
+            icon: DEMO_ICONS.notion,
             id: "scl_demo_notion",
             kind: "mcp" as const,
             name: "notion",
@@ -302,6 +305,7 @@ function demoSettings() {
           },
           {
             domains: ["slack.com"],
+            icon: DEMO_ICONS.slack,
             id: "scl_demo_slack",
             kind: "api" as const,
             name: "slack",
