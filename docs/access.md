@@ -38,6 +38,8 @@ Adding a domain to the project? Redeploy afterward. Sign-in only trusts addresse
 
 In production mode a chat belongs to the person who started it: a teammate with its link can't read it, add to it, or answer its approvals. eve doesn't do this on its own; the agent records each session's owner when its first turn starts and checks it on every request. In starter mode everyone shares one identity, so everyone with the password shares every chat. In production mode your chats are also kept on the server, in the same private Blob store: the list (written by the agent as you chat, so it's the same on every device) and each chat's transcript (saved by the chat as it grows), so an ended chat stays readable after eve deletes its run data. In starter mode the list is kept in each browser, per person, and doesn't follow you to another device.
 
+In production mode each crew member also remembers what you ask it to between chats: one short document per person per member, in the same private Blob store, which only you see in your chats. Ask it to forget something and it removes it. The same person reached by email or another channel is a different identity, with its own memory. Starter mode has no memory, because everyone with the password would share one.
+
 ## What the crew can reach
 
 - Each chat's sandbox (its shell and files) has no network access on Vercel, so nothing the crew reads can make it send data anywhere from the shell. Locally eve uses just-bash, which can't restrict the network.
