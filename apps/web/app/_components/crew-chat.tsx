@@ -19,8 +19,8 @@ import { useEveAgent } from "eve/react";
 import {
   AlertCircleIcon,
   ChevronLeftIcon,
-  HistoryIcon,
   LockIcon,
+  MessagesSquareIcon,
   MoreHorizontalIcon,
   RefreshCwIcon,
   SquarePenIcon,
@@ -639,7 +639,7 @@ function ChatHistoryMenu({
           />
         }
       >
-        <HistoryIcon className="size-4" />
+        <MessagesSquareIcon className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72">
         <p className="text-muted-foreground px-2 py-1.5 text-xs">
