@@ -7,6 +7,7 @@
  * @packageDocumentation
  */
 
+import type { ConnectionToolAnnotations } from "eve/tools/approval";
 import catalog from "./connectors.json";
 
 interface Connector {
@@ -60,6 +61,38 @@ export function configuredConnectors(): readonly ConfiguredConnector[] {
     const uid = process.env[connector.variable]?.trim();
     return uid ? [{ ...connector, uid }] : [];
   });
+}
+
+/**
+ * A connector's approval policy (agents/<name>/agent/connections/services.ts):
+ * read-only tools run; everything else waits for a person, including tools the
+ * server says nothing about and ones it calls both read-only and destructive. Annotations are the server's own hints; a tool on
+ * the connector's `approve` list always asks, whatever its hints say.
+ */
+export function connectorApproval(
+  connector: Pick<Connector, "approve" | "id">
+) {
+  const alwaysAsk = new Set(connector.approve ?? []);
+  const prefix = `${connector.id}__`;
+  return ({
+    toolAnnotations,
+    toolName,
+  }: {
+    readonly toolAnnotations?: ConnectionToolAnnotations;
+    readonly toolName: string;
+  }): "user-approval" | "not-applicable" => {
+    const name = toolName.startsWith(prefix)
+      ? toolName.slice(prefix.length)
+      : toolName;
+    // A tool that also claims to be destructive contradicts itself; ask. MCP
+    // defaults destructiveHint to true, so only an explicit true counts.
+    const readOnly =
+      toolAnnotations?.readOnlyHint === true &&
+      toolAnnotations.destructiveHint !== true;
+    return alwaysAsk.has(name) || !readOnly
+      ? "user-approval"
+      : "not-applicable";
+  };
 }
 
 /** The parts of a caller Vercel Connect keys a person's grant by. */
