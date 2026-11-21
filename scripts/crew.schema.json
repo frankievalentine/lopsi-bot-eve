@@ -55,6 +55,10 @@
       },
       "maxItems": 30,
       "uniqueItems": true
+    },
+    "approvals": {
+      "description": "When this crew member asks before changing something in a connected service: always (every time, the default), once (once per chat), auto (a reviewer model decides), or never. Reads and the first call to a new website ask regardless.",
+      "enum": ["always", "once", "auto", "never"]
     }
   }
 }

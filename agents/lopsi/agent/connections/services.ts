@@ -1,16 +1,19 @@
 import { connect } from "@vercel/connect/eve";
 import { defineDynamic, defineMcpClientConnection } from "eve/connections";
 import {
-  allowedFor,
+  approvalModeOf,
   connectorApproval,
-  connectors,
-} from "../../../../apps/web/lib/connectors.js";
+} from "../../../../apps/web/lib/approval-mode.js";
+import { allowedFor, connectors } from "../../../../apps/web/lib/connectors.js";
 import crew from "../../crew.json" with { type: "json" };
 
 /** The connectors this member may use (crew.json `connectors`); absent is all of them. */
 const allowed: readonly string[] | undefined = (
   crew as { connectors?: string[] }
 ).connectors;
+
+/** Read-only tools run; the rest follow this member's mode (crew.json `approvals`). */
+const approval = connectorApproval(approvalModeOf(crew));
 
 /**
  * One MCP connection for each MCP connector attached to this project in Vercel
@@ -33,7 +36,7 @@ export default defineDynamic(async () => {
     servers.map((connector) => [
       connector.name,
       defineMcpClientConnection({
-        approval: connectorApproval,
+        approval,
         auth: connect({
           connector: connector.id,
           displayName: connector.serviceName,

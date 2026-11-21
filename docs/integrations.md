@@ -23,13 +23,26 @@ Open Settings → **Integrations** → **Add Connectors**. It takes you to the p
 
 What the crew gets depends on the connector:
 
-- **An MCP server** (a connector created with the MCP method): its tools, named after the connector (`my-linear__search_issues`). Tools the server marks read-only run straight away; every other call waits for approval.
+- **An MCP server** (a connector created with the MCP method): its tools, named after the connector (`my-linear__search_issues`). Tools the server marks read-only run straight away; every other call follows the crew member's approval mode (below).
 - **Anything else** (an API key or OAuth to the service's API: Stripe, Google, Slack, Telegram, …): the `call_service` tool, which calls the service's HTTP API with the connector's credential. The credential is added on the server, so the model never sees it.
   - The first time the credential would go to a new host (`api.stripe.com`), the crew asks you first. Once you approve, later reads there go ahead for everyone. Settings lists the approved hosts for each connector, and removing one makes the crew ask again. Without the Blob store nothing is remembered, so every call asks.
-  - Anything other than a read (`GET`) always asks first.
+  - Anything other than a read (`GET`) follows the crew member's approval mode (below).
   - Redirects aren't followed, so the credential never reaches a host nobody approved.
 
 Where a service supports it, each person signs in with their own account the first time the crew needs it, with a sign-in card in the chat. **Connections** in the sidebar shows which you've connected, and disconnects one. Otherwise the crew uses the connector's own credential, the same for everyone. In starter mode everyone shares one identity, and so one connection.
+
+### When the crew asks first
+
+Each crew member has an approval mode for changes in connected services (a comment, a post, an edit), set in **Edit** under **Changes in connected services** and saved as `approvals` in its `crew.json`. The modes are eve's own approval helpers:
+
+| Mode | `approvals` | Changes |
+| --- | --- | --- |
+| Ask every time (the default) | `always` | Each one waits for an OK. |
+| Ask once per chat | `once` | The first change in a chat waits; eve remembers the OK for that tool for the rest of the chat. |
+| Let a reviewer model decide | `auto` | eve's decision model reviews each change and asks you when it flags one, or when the review fails. It sees the request, not the credential, through AI Gateway with zero data retention. |
+| Don't ask | `never` | Changes run without asking. Anyone who can chat with the member can have it change things through its services. |
+
+Whatever the mode, reads run on their own, and the first call to a new website asks once, so a credential only goes where someone allowed. When several calls wait at once, the chat offers **Approve all**.
 
 To limit a crew member to some services, pick them in **Edit**, or list their names in its `crew.json` `connectors`. A connector's name is its name in Vercel, lowercased with dashes: `My Linear` is `my-linear`.
 

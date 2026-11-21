@@ -21,9 +21,26 @@ export const MASCOTS = /** @type {const} */ ([
 /** The `$schema` every crew.json points at, relative to agents/<name>/. */
 export const CREW_SCHEMA_PATH = "../../scripts/crew.schema.json";
 
+/**
+ * When a crew member asks before changing something in a connected service,
+ * named after eve's approval helpers (eve/tools/approval): every time, once per
+ * chat, when a reviewer model flags it, or never. apps/web/lib/approval-mode.ts
+ * turns it into the policy; reads and new websites don't depend on it.
+ */
+export const APPROVAL_MODES = /** @type {const} */ ([
+  "always",
+  "once",
+  "auto",
+  "never",
+]);
+
+/** The mode of a crew.json without `approvals`. */
+export const DEFAULT_APPROVAL_MODE = "always";
+
 export const CrewSchema = z
   .object({
     $schema: z.string().optional(),
+    approvals: z.enum(APPROVAL_MODES).optional(),
     // Which connectors (their names in apps/web/lib/connectors.ts) the member may use; absent is all of them.
     connectors: z
       .array(z.string().regex(/^[a-z][a-z0-9-]{0,30}$/u))
@@ -67,7 +84,8 @@ export function parseCrewJson(text) {
  * @returns {string}
  */
 export function serializeCrewJson(data) {
-  const { connectors, mascot, name, order, role, suggestions } = data;
+  const { approvals, connectors, mascot, name, order, role, suggestions } =
+    data;
   return `${JSON.stringify(
     {
       $schema: CREW_SCHEMA_PATH,
@@ -77,6 +95,9 @@ export function serializeCrewJson(data) {
       ...(order === undefined ? {} : { order }),
       ...(suggestions?.length ? { suggestions } : {}),
       ...(connectors === undefined ? {} : { connectors }),
+      ...(approvals === undefined || approvals === DEFAULT_APPROVAL_MODE
+        ? {}
+        : { approvals }),
     },
     null,
     2
@@ -110,6 +131,11 @@ export function crewSource(entries) {
             order: data.order,
             role: data.role ?? "",
             suggestions: data.suggestions ?? [],
+            // Only when it isn't the default, so most crew lists don't change.
+            ...(data.approvals === undefined ||
+            data.approvals === DEFAULT_APPROVAL_MODE
+              ? {}
+              : { approvals: data.approvals }),
           }
     )
     // `order` first (lowest first), then the rest by directory name. The order
@@ -136,6 +162,8 @@ export interface CrewMember {
   readonly name: string;
   readonly role: string;
   readonly suggestions: readonly string[];
+  /** When it asks before changing things in connected services; absent is "always". */
+  readonly approvals?: "always" | "once" | "auto" | "never";
 }
 
 export const CREW: readonly CrewMember[] = ${JSON.stringify(crew, null, 2)};
