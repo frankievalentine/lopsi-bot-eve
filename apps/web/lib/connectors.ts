@@ -53,7 +53,7 @@ export type ConnectorListing =
   | { readonly connectors: readonly Connector[]; readonly ok: true }
   | { readonly ok: false; readonly reason: ConnectorsUnavailable };
 
-interface Attachment {
+export interface Attachment {
   readonly connectorId: string;
   readonly enabledEnvironments?: readonly string[];
 }
@@ -143,6 +143,45 @@ function environment(): string {
   );
 }
 
+/** One page of a project's attached connectors. */
+export interface AttachmentPage {
+  readonly connectors?: readonly Attachment[];
+  readonly pagination?: { readonly next?: string | null };
+}
+
+/** The most a page holds; Vercel refuses a larger `limit`. */
+const PAGE_SIZE = 100;
+
+/**
+ * Every connector attached to the project, reading page after page: each
+ * page's `pagination.next` is the `cursor` for the one after it. A cursor
+ * that comes back twice throws rather than loop.
+ */
+export async function allAttachments(
+  fetchPage: (query: string) => Promise<AttachmentPage>
+): Promise<readonly Attachment[]> {
+  const attached: Attachment[] = [];
+  const seen = new Set<string>();
+  let cursor: string | undefined;
+  do {
+    const query = new URLSearchParams({ limit: String(PAGE_SIZE) });
+    if (cursor !== undefined) {
+      query.set("cursor", cursor);
+    }
+    // biome-ignore lint/performance/noAwaitInLoops: each page's cursor comes from the page before it.
+    const page = await fetchPage(query.toString());
+    attached.push(...(page.connectors ?? []));
+    cursor = page.pagination?.next || undefined;
+    if (cursor !== undefined) {
+      if (seen.has(cursor)) {
+        throw new Error(`Vercel Connect returned the cursor ${cursor} twice.`);
+      }
+      seen.add(cursor);
+    }
+  } while (cursor !== undefined);
+  return attached;
+}
+
 async function listConnectors(): Promise<ConnectorListing> {
   if (!process.env.VERCEL_TOKEN?.trim()) {
     return { ok: false, reason: "no-token" };
@@ -152,10 +191,13 @@ async function listConnectors(): Promise<ConnectorListing> {
     return { ok: false, reason: "no-project" };
   }
   try {
-    const { connectors: attached = [] } = (await vercelApi(
-      target,
-      `/v2/connect/projects/${encodeURIComponent(target.projectId)}/connectors`
-    )) as { connectors?: readonly Attachment[] };
+    const attached = await allAttachments(
+      (query) =>
+        vercelApi(
+          target,
+          `/v2/connect/projects/${encodeURIComponent(target.projectId)}/connectors?${query}`
+        ) as Promise<AttachmentPage>
+    );
     const here = environment();
     const records = await Promise.all(
       attached

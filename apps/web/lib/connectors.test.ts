@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  type Attachment,
+  type AttachmentPage,
+  allAttachments,
   allowedFor,
   type ConnectorRecord,
   chatPath,
@@ -139,5 +142,63 @@ describe("allowedFor", () => {
 describe("chatPath", () => {
   it("is the member's channel route", () => {
     expect(chatPath("lopsi", "telegram")).toBe("/eve/lopsi/v1/telegram");
+  });
+});
+
+describe("allAttachments", () => {
+  function attachment(connectorId: string): Attachment {
+    return { connectorId };
+  }
+
+  /** A fetcher serving these pages in order, keyed by the cursor that reaches each. */
+  function pages(byCursor: Record<string, AttachmentPage>) {
+    const queries: string[] = [];
+    const fetchPage = (query: string) => {
+      queries.push(query);
+      const cursor = new URLSearchParams(query).get("cursor") ?? "";
+      const page = byCursor[cursor];
+      if (page === undefined) {
+        throw new Error(`no page for cursor "${cursor}"`);
+      }
+      return Promise.resolve(page);
+    };
+    return { fetchPage, queries };
+  }
+
+  it("reads a single page", async () => {
+    const { fetchPage, queries } = pages({
+      "": { connectors: [attachment("scl_a")], pagination: { next: null } },
+    });
+    expect(await allAttachments(fetchPage)).toEqual([attachment("scl_a")]);
+    expect(queries).toEqual(["limit=100"]);
+  });
+
+  it("follows each page's cursor to the next, in order", async () => {
+    const { fetchPage, queries } = pages({
+      "": { connectors: [attachment("scl_a")], pagination: { next: "c1" } },
+      c1: { connectors: [attachment("scl_b")], pagination: { next: "c2" } },
+      c2: { connectors: [attachment("scl_c")], pagination: { next: null } },
+    });
+    expect(
+      (await allAttachments(fetchPage)).map((entry) => entry.connectorId)
+    ).toEqual(["scl_a", "scl_b", "scl_c"]);
+    expect(queries).toEqual([
+      "limit=100",
+      "limit=100&cursor=c1",
+      "limit=100&cursor=c2",
+    ]);
+  });
+
+  it("stops at a page with no pagination", async () => {
+    const { fetchPage } = pages({ "": {} });
+    expect(await allAttachments(fetchPage)).toEqual([]);
+  });
+
+  it("throws when a cursor comes back twice", async () => {
+    const { fetchPage } = pages({
+      "": { connectors: [], pagination: { next: "c1" } },
+      c1: { connectors: [], pagination: { next: "c1" } },
+    });
+    await expect(allAttachments(fetchPage)).rejects.toThrow("twice");
   });
 });
