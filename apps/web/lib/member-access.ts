@@ -80,7 +80,23 @@ function domainsLine(domains: readonly string[]): string {
     : `const ALLOWED_DOMAINS: readonly string[] = [\n${domains.map((domain) => `  "${domain}",\n`).join("")}];`;
 }
 
-function sandboxSource(domains: readonly string[]): string {
+/**
+ * The sandbox.ts template. `exported: false` is the form before
+ * hooks/network.ts needed the policy; members not yet updated by hand
+ * (docs/updating.md) still have it, so it's read back too, and the next edit
+ * writes the current form.
+ */
+function sandboxSource(
+  domains: readonly string[],
+  { exported = true }: { readonly exported?: boolean } = {}
+): string {
+  const policyDoc = exported
+    ? `/**
+ * Also applied to chats already open, before each shell command
+ * (hooks/network.ts), since a resumed sandbox keeps the policy it began with.
+ */
+export `
+    : "";
   return `import { DefaultSandbox, defineSandbox } from "eve/sandbox";
 
 /**
@@ -107,7 +123,7 @@ export const environment = DefaultSandbox.environment({
   },
 });
 
-function networkPolicy() {
+${policyDoc}function networkPolicy() {
   return ALLOWED_DOMAINS.length === 0
     ? "deny-all"
     : {
@@ -178,7 +194,9 @@ function readSandbox(source: string | undefined): string[] | undefined {
   const domains = [...(list.groups.list ?? "").matchAll(QUOTED)].map(
     (match) => match.groups?.value ?? ""
   );
-  return domains.every(isDomain) && sandboxSource(domains) === source
+  return domains.every(isDomain) &&
+    (sandboxSource(domains) === source ||
+      sandboxSource(domains, { exported: false }) === source)
     ? domains
     : undefined;
 }

@@ -42,7 +42,7 @@ In production mode each crew member also remembers what you ask it to between ch
 
 ## What the crew can reach
 
-- Each chat's sandbox (its shell and files) has no network access on Vercel, so nothing the crew reads can make it send data anywhere from the shell. Locally eve uses just-bash, which can't restrict the network.
+- Each chat's sandbox (its shell and files) has no network access on Vercel, or only the domains a member's Edit allows, so nothing the crew reads can make it send data anywhere else from the shell. A change to those domains reaches chats already open at their next shell command once it's deployed. Locally eve uses just-bash, which can't restrict the network.
 - `web_fetch` runs outside the sandbox, so it asks before every URL: a link built from chat or connector data could otherwise carry that data away.
 - A chat stops and asks to continue after it spends `LOPSI_SESSION_BUDGET_USD` (default $1) on model calls since the last Continue. With a model that reports no cost, eve's token cap applies instead.
 
