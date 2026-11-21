@@ -1,6 +1,5 @@
 "use client";
 
-import { ExternalLinkIcon, GitPullRequestIcon } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 import { Mascot, type MascotKind } from "@/components/mascot";
 import { Button } from "@/components/ui/button";
@@ -45,6 +44,7 @@ import {
   type ConnectorChoice,
   NEW_ACCESS,
 } from "./member-access-fields";
+import { PullRequestOpened, useUnsavedWarning } from "./member-dialog-parts";
 import {
   FallbackPicker,
   type ModelOption,
@@ -159,18 +159,6 @@ function configOf(form: Form, from: MemberConfig | undefined): MemberConfig {
         }
       : {}),
   };
-}
-
-/** Warns before the page is left with unsaved changes. */
-function useUnsavedWarning(unsaved: boolean) {
-  useEffect(() => {
-    if (!unsaved) {
-      return;
-    }
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [unsaved]);
 }
 
 /** Loads what the dialog edits each time it opens: the member's config (when editing) and the model list. */
@@ -654,40 +642,5 @@ function InstructionsField({
         value={form.instructions}
       />
     </label>
-  );
-}
-
-function PullRequestOpened({
-  onClose,
-  pull,
-}: {
-  readonly onClose: () => void;
-  readonly pull: PullRequest;
-}) {
-  return (
-    <div className="flex flex-col gap-4">
-      <DialogHeader>
-        <DialogTitle>Pull Request Opened</DialogTitle>
-        <DialogDescription>
-          {pull.draft ? "A draft pull request" : "A pull request"} is waiting
-          for review. Merging it deploys the change.
-        </DialogDescription>
-      </DialogHeader>
-      <a
-        className="hover:bg-accent flex items-center gap-2.5 rounded-lg border p-3 text-sm transition-colors"
-        href={pull.url}
-        rel="noreferrer"
-        target="_blank"
-      >
-        <GitPullRequestIcon className="size-4 shrink-0" />
-        <span className="flex-1 truncate">
-          #{pull.number} {pull.title}
-        </span>
-        <ExternalLinkIcon className="text-muted-foreground size-3.5 shrink-0" />
-      </a>
-      <DialogFooter>
-        <Button onClick={onClose}>Done</Button>
-      </DialogFooter>
-    </div>
   );
 }
