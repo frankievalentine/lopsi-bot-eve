@@ -431,7 +431,7 @@ function ChatRows({
       .finally(() => setBusy(null));
   };
   return (
-    <div className="space-y-1.5 border-t pt-2">
+    <div className="space-y-1.5">
       {chat.members.map((member) => (
         <div
           className="flex items-center justify-between gap-2 text-xs"
@@ -490,7 +490,7 @@ function DomainRows({
       .finally(() => setBusy(null));
   };
   return (
-    <div className="space-y-1.5 border-t pt-2 text-xs">
+    <div className="space-y-1.5 text-xs">
       {domains.length === 0 ? (
         <p className="text-muted-foreground text-pretty">
           The crew asks before its credential goes to any host.
@@ -747,7 +747,7 @@ function EmailRows({
     );
   }
   return (
-    <div className="space-y-2 border-t pt-2 text-xs">
+    <div className="space-y-2 text-xs">
       {body}
       {email.domain || email.pending ? (
         <SendersEditor
@@ -765,7 +765,7 @@ function EmailRows({
   );
 }
 
-function IntegrationCard({
+function IntegrationRow({
   integration,
   onChanged,
   status,
@@ -776,44 +776,46 @@ function IntegrationCard({
 }) {
   const { kind, problem, serviceName, title } = integration;
   return (
-    <div className="space-y-2 rounded-lg border p-3">
-      <div className="flex items-start gap-3">
+    <li className="space-y-2.5 px-3.5 py-2.5">
+      <div className="flex items-center gap-3">
         <ServiceIcon integration={integration} />
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2">
-            <span
-              aria-label={problem ? "Not working" : "Working"}
-              className={cn(
-                "size-1.5 shrink-0 rounded-full",
-                problem ? "bg-destructive" : "bg-online"
-              )}
-              role="img"
-            />
-            <span className="truncate text-sm font-medium">{title}</span>
-          </span>
-          <span className="text-muted-foreground mt-0.5 block text-xs">
+          <span className="block truncate text-sm">{title}</span>
+          <span className="text-muted-foreground block text-xs">
             {title === serviceName ? "" : `${serviceName} · `}
             {kind === "mcp" ? "MCP" : "API"}
           </span>
-          {problem ? (
-            <span className="text-destructive mt-1 block text-xs text-pretty">
-              {problem}
-            </span>
-          ) : null}
+        </span>
+        <span
+          className={cn(
+            "inline-flex shrink-0 items-center gap-1.5 text-xs",
+            problem ? "text-destructive" : "text-muted-foreground"
+          )}
+        >
+          <span
+            aria-hidden="true"
+            className={cn(
+              "size-1.5 rounded-full",
+              problem ? "bg-destructive" : "bg-online"
+            )}
+          />
+          {problem ?? "Connected"}
         </span>
       </div>
-      <ChatRows
-        integration={integration}
-        onChanged={onChanged}
-        senders={status.senders}
-      />
-      <EmailRows
-        integration={integration}
-        onChanged={onChanged}
-        status={status}
-      />
-      <DomainRows integration={integration} onChanged={onChanged} />
-    </div>
+      <div className="space-y-2.5 empty:hidden sm:pl-11">
+        <ChatRows
+          integration={integration}
+          onChanged={onChanged}
+          senders={status.senders}
+        />
+        <EmailRows
+          integration={integration}
+          onChanged={onChanged}
+          status={status}
+        />
+        <DomainRows integration={integration} onChanged={onChanged} />
+      </div>
+    </li>
   );
 }
 
@@ -858,23 +860,23 @@ function IntegrationsSection({
           </Group>
         ) : null}
         {connectors.ok && connectors.list.length > 0 ? (
-          <div className="grid gap-2 sm:grid-cols-2">
+          <ul className="divide-y rounded-lg border">
             {connectors.list.map((integration) => (
-              <IntegrationCard
+              <IntegrationRow
                 integration={integration}
                 key={integration.id}
                 onChanged={onChanged}
                 status={status}
               />
             ))}
-          </div>
+          </ul>
         ) : null}
       </section>
       {connectors.ok &&
       !connectors.list.some((integration) => integration.email) ? (
         <Group title="Email">
           <Row
-            hint="Add a Resend connector in Vercel (an API key with full access), then turn on email on its card."
+            hint="Add a Resend connector in Vercel (an API key with full access), then turn on email on its row."
             label="Let people email the crew"
           >
             <External href={`${GUIDE}/integrations.md#email`}>Guide</External>

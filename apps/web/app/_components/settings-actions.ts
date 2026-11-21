@@ -140,11 +140,9 @@ async function problemOf(
       (error instanceof UserAuthorizationRequiredError ||
         error instanceof NoValidTokenError)
     ) {
-      return "Not connected for you yet. Connect it from Your Connections.";
+      return "Not connected";
     }
-    return connector.perPerson
-      ? "Vercel Connect couldn't check your connection."
-      : "Vercel Connect couldn't get its credential. Check the connector in Vercel.";
+    return connector.perPerson ? "Can't check" : "Credential failed";
   }
 }
 
@@ -298,8 +296,7 @@ function demoSettings() {
             kind: "mcp" as const,
             name: "notion",
             perPerson: true,
-            problem:
-              "Not connected for you yet. Connect it from Your Connections.",
+            problem: "Not connected",
             serviceName: "Notion",
             title: "Notion",
           },

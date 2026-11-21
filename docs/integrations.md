@@ -40,7 +40,7 @@ The dashboard opens pull requests through a GitHub connector: the one the Deploy
 Besides the dashboard, people can talk to Lopsi in Slack or Telegram. Add a Slack or Telegram connector in Vercel Connect, as above. Then, in Settings → **Integrations**, click **Turn On** next to **Chat with Lopsi**. That has the connector send its messages to `/eve/lopsi/v1/slack` (or `/telegram`). Connect checks each message and forwards it, so the deployment holds no Slack or Telegram secret.
 
 - **Slack:** anyone in the workspace where the app is installed can mention or message it.
-- **Telegram:** anyone can find a bot, so only private chats from people under **Who may message the bot** on the Telegram card (usernames or user ids) get an answer. Everything else is dropped without a reply, and the deployment's logs name the sender, so you can add them.
+- **Telegram:** anyone can find a bot, so only private chats from people under **Who may message the bot** on the Telegram row (usernames or user ids) get an answer. Everything else is dropped without a reply, and the deployment's logs name the sender, so you can add them.
 - The same connector also lets the crew send messages there through `call_service`, for example to post a summary to a channel, or message you when something finishes. A Telegram bot can only message people who have messaged it first.
 - Lopsi answers these channels. To have another member answer instead, move `agents/lopsi/agent/channels/slack.ts` (or `telegram.ts`) to that member and change its `MEMBER_ID`.
 
@@ -50,10 +50,10 @@ People can email each crew member at its own address, `<member>@<domain>`, throu
 
 1. In Resend, turn on receiving for your domain (an MX record), and create an API key with **Full access**, so Connect can manage the webhook.
 2. In Vercel Connect, add a Resend connector with that key and attach it to the project.
-3. In Settings → **Integrations**, the Resend card asks for the domain. Click **Turn On**. That sends received email to the dashboard, saves the domain, and redeploys production once. Email works when the redeploy finishes.
+3. In Settings → **Integrations**, the Resend row asks for the domain. Click **Turn On**. That sends received email to the dashboard, saves the domain, and redeploys production once. Email works when the redeploy finishes.
 4. Under **Who may email the crew**, add the addresses (`ana@example.com`) or whole domains (`@example.com`) that may write.
 
-Receiving needs [Upstash for Redis](https://vercel.com/marketplace/upstash) for email threads. The Deploy button adds it; otherwise the card links to it.
+Receiving needs [Upstash for Redis](https://vercel.com/marketplace/upstash) for email threads. The Deploy button adds it; otherwise its row links to it.
 
 - Connect checks Resend's signature and forwards each email to `/api/email`, which hands it to the members it's addressed to. So the deployment holds no Resend key or webhook secret, and one connector serves the whole crew, including members added later.
 - Replies stay in the email thread; approvals and questions arrive as numbered options you answer by replying.
