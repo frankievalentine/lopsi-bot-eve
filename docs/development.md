@@ -28,7 +28,7 @@ pnpm build      # eve build, then the web app
 pnpm eval --tag fast
 ```
 
-Evals call real models through AI Gateway, so they need the project linked and its environment pulled.
+Evals call real models through AI Gateway, so they need the project linked and its environment pulled. The `web-fetch` evals answer web_fetch's approval themselves and stub the pages it fetches, so they reach nothing but the model. Locally, `channels/eve.ts` lets localhost stub tools; deployments never do.
 
 ## Project layout
 

@@ -5,7 +5,7 @@ import {
   vercelOidc,
   withAuthChallenges,
 } from "eve/channels/auth";
-import { eveChannel } from "eve/channels/eve";
+import { type EveAuthFn, eveChannel } from "eve/channels/eve";
 import { accessCookieAuth } from "../../../../apps/web/lib/access.js";
 import { auth } from "../../../../apps/web/lib/auth.js";
 import { isProductionMode } from "../../../../apps/web/lib/production-mode.js";
@@ -65,14 +65,25 @@ const deploymentOidc: AuthFn<Request> = withAuthChallenges(
   [{ scheme: "Bearer" }]
 );
 
+const localCaller = localDev();
+
+/**
+ * localhost during `eve dev` and `eve eval` (localDev() admits nothing in
+ * production), allowed to stub tools so local evals run without the network.
+ */
+const localDevWithStubs: EveAuthFn = async (request) => {
+  const caller = await localCaller(request);
+  return caller ? { ...caller, allowToolStubs: true } : null;
+};
+
 export default eveChannel({
   auth: [
     // Production mode: Sign in with Vercel, limited to the project's team.
     betterAuthSession,
     // Lets the eve TUI and this deployment reach the deployed agent.
     deploymentOidc,
-    // Open on localhost for `eve dev` and the REPL; ignored in production.
-    localDev(),
+    // Open on localhost for `eve dev`, `eve eval` and the REPL; ignored in production.
+    localDevWithStubs,
     // Starter mode: the shared access password's cookie; skipped in production mode.
     accessCookieAuth(),
     // Rejects everything else, so a deployment with neither mode configured
