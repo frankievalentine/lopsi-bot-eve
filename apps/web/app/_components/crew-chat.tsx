@@ -367,7 +367,11 @@ export function CrewChat({
                 </ConversationEmptyState>
               ) : (
                 agent.messages.map((message) =>
-                  showPendingActivity && message === lastMessage ? null : (
+                  // The shimmer stands in for a reply with nothing in it yet,
+                  // never for the message you just sent.
+                  showPendingActivity &&
+                  message === lastMessage &&
+                  message.role === "assistant" ? null : (
                     <EveMessageView
                       asks={asks}
                       key={message.id}
