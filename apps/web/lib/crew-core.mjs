@@ -24,7 +24,7 @@ export const CREW_SCHEMA_PATH = "../../scripts/crew.schema.json";
 export const CrewSchema = z
   .object({
     $schema: z.string().optional(),
-    // Which connectors (apps/web/lib/connectors.json ids) the member may use; absent is all of them.
+    // Which connectors (their names in apps/web/lib/connectors.ts) the member may use; absent is all of them.
     connectors: z
       .array(z.string().regex(/^[a-z][a-z0-9-]{0,30}$/u))
       .max(30)

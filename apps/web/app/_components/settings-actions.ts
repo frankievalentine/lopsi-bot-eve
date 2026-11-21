@@ -3,9 +3,16 @@
 import { headers } from "next/headers";
 import { type AccessMode, accessMode } from "@/lib/access";
 import { type MemberSetupResult, memberSetup } from "@/lib/agent-info";
-import { isConfigured } from "@/lib/channel-core.mjs";
-import channelCatalog from "@/lib/channels.json";
-import { connectorCatalog } from "@/lib/connectors";
+import { approvedDomains, revokeDomain } from "@/lib/connector-domains";
+import {
+  CHAT_SERVICES,
+  type ChatService,
+  type Connector,
+  type ConnectorsUnavailable,
+  chatPath,
+  connectorListing,
+  sendEventsTo,
+} from "@/lib/connectors";
 import { CREW } from "@/lib/crew";
 import { currentAccount } from "@/lib/current-account";
 import { isDemo } from "@/lib/demo";
@@ -23,20 +30,10 @@ import {
 export interface SettingsStatus {
   readonly access: AccessMode | "demo";
   readonly budgetUsd: number;
-  readonly catalog: readonly {
-    readonly configured: boolean;
-    readonly description: string;
-    readonly id: string;
-    readonly name: string;
-    readonly variable: string;
-  }[];
-  /** The messaging channels in apps/web/lib/channels.json, and whether each is set up. */
-  readonly channels: readonly {
-    readonly configured: boolean;
-    readonly description: string;
-    readonly id: string;
-    readonly name: string;
-  }[];
+  /** The Vercel Connect connectors attached to this project, or why they can't be listed. */
+  readonly connectors:
+    | { readonly list: readonly Integration[]; readonly ok: true }
+    | { readonly ok: false; readonly reason: ConnectorsUnavailable };
   /** Each member's email address, for members that answer email. */
   readonly email: Readonly<Record<string, string>>;
   /** How many entries LOPSI_EMAIL_SENDERS has. */
@@ -57,6 +54,77 @@ export interface SettingsStatus {
   readonly version: string;
 }
 
+/** A connector as Settings shows it. */
+export interface Integration {
+  /** Chatting with a crew member through it (Slack, Telegram): who answers, and whether its events come here. */
+  readonly chat?: {
+    readonly members: readonly {
+      readonly id: string;
+      readonly name: string;
+      readonly on: boolean;
+    }[];
+    readonly service: ChatService;
+  };
+  /** For an API connector: the hosts its credential may go to without asking. */
+  readonly domains?: readonly string[];
+  readonly icon?: string;
+  readonly id: string;
+  readonly kind: Connector["kind"];
+  /** Its connection name, which crew.json `connectors` uses. */
+  readonly name: string;
+  readonly perPerson: boolean;
+  readonly serviceName: string;
+  readonly title: string;
+}
+
+/** Whether a member's deployed agent has a channel. */
+function hasChannel(
+  setups: Readonly<Record<string, MemberSetupResult>>,
+  memberId: string,
+  channel: string
+): boolean {
+  const setup = setups[memberId];
+  return setup?.ok === true && setup.setup.channels.includes(channel);
+}
+
+async function integrationOf(
+  connector: Connector,
+  setups: Readonly<Record<string, MemberSetupResult>>
+): Promise<Integration> {
+  const service = CHAT_SERVICES.find((entry) => entry === connector.service);
+  const domains =
+    connector.kind === "api"
+      ? await approvedDomains(connector.id).catch(() => [])
+      : undefined;
+  return {
+    id: connector.id,
+    kind: connector.kind,
+    name: connector.name,
+    perPerson: connector.perPerson,
+    serviceName: connector.serviceName,
+    title: connector.title,
+    ...(connector.icon ? { icon: connector.icon } : {}),
+    ...(domains === undefined ? {} : { domains }),
+    ...(service === undefined
+      ? {}
+      : {
+          chat: {
+            members: CREW.filter((member) =>
+              hasChannel(setups, member.id, service)
+            ).map((member) => ({
+              id: member.id,
+              name: member.name,
+              on:
+                connector.triggers?.paths.includes(
+                  chatPath(member.id, service)
+                ) ?? false,
+            })),
+            service,
+          },
+        }),
+  };
+}
+
 /** This request's origin, so the server can call the deployed agents. */
 async function originOf(): Promise<string> {
   const list = await headers();
@@ -69,7 +137,7 @@ async function originOf(): Promise<string> {
 
 /** The demo's example setup: nothing here is read from a deployment. */
 function demoSettings() {
-  const active = new Set(["linear", "notion"]);
+  const active = ["linear", "notion"];
   return {
     ok: true as const,
     setups: Object.fromEntries(
@@ -79,7 +147,7 @@ function demoSettings() {
           ok: true as const,
           setup: {
             channels: [],
-            connections: [...active].map((name) => ({ approval: true, name })),
+            connections: active.map((name) => ({ approval: true, name })),
             diagnostics: { errors: 0, warnings: 0 },
             sandbox: "vercel",
             schedules: [],
@@ -92,16 +160,36 @@ function demoSettings() {
     status: {
       access: "demo" as const,
       budgetUsd: 1,
-      catalog: connectorCatalog().map((entry) => ({
-        ...entry,
-        configured: active.has(entry.id),
-      })),
-      channels: channelCatalog.map((entry) => ({
-        configured: false,
-        description: entry.description,
-        id: entry.id,
-        name: entry.name,
-      })),
+      connectors: {
+        list: [
+          {
+            id: "scl_demo_linear",
+            kind: "mcp" as const,
+            name: "linear",
+            perPerson: true,
+            serviceName: "Linear",
+            title: "Linear",
+          },
+          {
+            id: "scl_demo_notion",
+            kind: "mcp" as const,
+            name: "notion",
+            perPerson: true,
+            serviceName: "Notion",
+            title: "Notion",
+          },
+          {
+            domains: ["slack.com"],
+            id: "scl_demo_slack",
+            kind: "api" as const,
+            name: "slack",
+            perPerson: false,
+            serviceName: "Slack",
+            title: "Slack",
+          },
+        ],
+        ok: true as const,
+      },
       email: { lopsi: "lopsi@example.com" },
       emailSenders: 0,
       github: true,
@@ -142,19 +230,24 @@ export async function loadSettings(): Promise<
     )
   );
   const repository = targetRepository();
+  const setupsById = Object.fromEntries(setups);
+  const listing = await connectorListing();
   return {
     ok: true,
-    setups: Object.fromEntries(setups),
+    setups: setupsById,
     status: {
       access: accessMode(),
       budgetUsd: sessionBudgetUsd(),
-      catalog: connectorCatalog(),
-      channels: channelCatalog.map((entry) => ({
-        configured: isConfigured(entry.env.map((variable) => variable.name)),
-        description: entry.description,
-        id: entry.id,
-        name: entry.name,
-      })),
+      connectors: listing.ok
+        ? {
+            list: await Promise.all(
+              listing.connectors.map((connector) =>
+                integrationOf(connector, setupsById)
+              )
+            ),
+            ok: true,
+          }
+        : listing,
       email: Object.fromEntries(
         CREW.flatMap((member) => {
           const address = emailSetup(member.id)?.address;
@@ -164,7 +257,7 @@ export async function loadSettings(): Promise<
       emailSenders: (process.env.LOPSI_EMAIL_SENDERS ?? "")
         .split(",")
         .filter((entry) => entry.trim()).length,
-      github: configChangesUnavailable() === undefined,
+      github: (await configChangesUnavailable()) === undefined,
       history: isProductionMode(),
       version: TEMPLATE_VERSION,
       ...(update === undefined ? {} : { update }),
@@ -178,4 +271,44 @@ export async function loadSettings(): Promise<
           }),
     },
   };
+}
+
+/** Who may change integrations: anyone signed in, but not the demo. */
+async function mayChange(): Promise<boolean> {
+  return !isDemo && typeof (await currentAccount()) !== "string";
+}
+
+/** Has a Slack or Telegram connector send its messages to a crew member. */
+export async function allowChat(
+  connectorId: string,
+  memberId: string
+): Promise<{ readonly error?: string; readonly ok: boolean }> {
+  if (!(await mayChange())) {
+    return { error: "Sign in to change integrations.", ok: false };
+  }
+  if (!CREW.some((member) => member.id === memberId)) {
+    return { error: "No such crew member.", ok: false };
+  }
+  try {
+    await sendEventsTo(connectorId, memberId);
+    return { ok: true };
+  } catch (error) {
+    console.error("[lopsi] couldn't route a connector's events:", error);
+    return {
+      error: "Vercel refused. Check that VERCEL_TOKEN can manage connectors.",
+      ok: false,
+    };
+  }
+}
+
+/** Takes back a host an API connector's credential was approved for. */
+export async function forgetDomain(
+  connectorId: string,
+  host: string
+): Promise<{ readonly ok: boolean }> {
+  if (!(await mayChange())) {
+    return { ok: false };
+  }
+  await revokeDomain(connectorId, host);
+  return { ok: true };
 }

@@ -1,7 +1,8 @@
 /**
  * The GitHub side of configuration by pull request: which repository and branch
  * this deployment came from, a short-lived token from the Vercel Connect GitHub
- * connector (`GITHUB_CONNECTOR`, set by `pnpm setup:connector github`), and a
+ * connector (`GITHUB_CONNECTOR`, which the Deploy Button sets, or else a GitHub
+ * connector attached to the project), and a
  * few REST calls to read files and open a pull request with several of them.
  *
  * The token is the GitHub App's installation token: it never reaches the
@@ -12,6 +13,7 @@
  */
 
 import { getToken } from "@vercel/connect";
+import { connectors } from "./connectors";
 
 const API = "https://api.github.com";
 const MENTIONS_DRAFT = /draft/iu;
@@ -46,10 +48,18 @@ export function targetRepository(): Repository | undefined {
   return owner && repo ? { branch, owner, repo } : undefined;
 }
 
+/** The GitHub connector that opens pull requests. */
+async function githubConnector(): Promise<string | undefined> {
+  return (
+    process.env.GITHUB_CONNECTOR?.trim() ||
+    (await connectors()).find((connector) => connector.service === "github")?.id
+  );
+}
+
 /** Why the dashboard can't propose changes here, or `undefined` when it can. */
-export function configChangesUnavailable(): string | undefined {
-  if (!process.env.GITHUB_CONNECTOR?.trim()) {
-    return "Run `pnpm setup:connector github` to let the dashboard open pull requests.";
+export async function configChangesUnavailable(): Promise<string | undefined> {
+  if ((await githubConnector()) === undefined) {
+    return "Attach a GitHub connector to this project in Vercel Connect to let the dashboard open pull requests.";
   }
   if (targetRepository() === undefined) {
     return "This deployment isn't built from a GitHub repository. Set LOPSI_GITHUB_REPO to owner/repo.";
@@ -69,7 +79,7 @@ async function github<T>(
   path: string,
   init: { body?: unknown; method?: string } = {}
 ): Promise<T> {
-  const connector = process.env.GITHUB_CONNECTOR?.trim();
+  const connector = await githubConnector();
   if (!connector) {
     throw new GitHubError("GitHub isn't set up.", 503);
   }

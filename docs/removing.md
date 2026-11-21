@@ -22,13 +22,13 @@ Settings lists these for your deployment when it's done. Deleting the project in
 
 | Item | Made by | Where to remove it |
 | --- | --- | --- |
-| Blob store, with chat history | `pnpm setup:sign-in` | Vercel: Storage |
-| Connectors | `pnpm setup:connector`, the Deploy button | Vercel: Connect |
+| Blob store, with chat history | The Deploy button, `pnpm setup:sign-in` | Vercel: Storage |
+| Connectors | You, in Vercel Connect; the Deploy button | Vercel: Connect |
+| `VERCEL_TOKEN` | You, for the Deploy button | Vercel: [Tokens](https://vercel.com/account/tokens) |
 | GitHub repository | The Deploy button | GitHub: the repository's settings |
 | GitHub App | The Deploy button | GitHub: [Applications](https://github.com/settings/installations) |
 | Vercel App for sign-in | `pnpm setup:sign-in` | Vercel: team settings, Apps |
-| Upstash for Redis store | `pnpm setup:email`, `pnpm setup:channel` | Vercel: Storage |
+| Upstash for Redis store | `pnpm setup:email` | Vercel: Storage |
 | Resend webhooks, API key, receiving domain | `pnpm setup:email` | [Resend](https://resend.com) |
-| Channel webhooks | `pnpm setup:channel` | The provider's dashboard |
 
-Upstash can keep billing on a paid plan, and a provider's webhooks keep firing at the old address until you remove them.
+Upstash can keep billing on a paid plan, and Resend's webhooks keep firing at the old address until you remove them.

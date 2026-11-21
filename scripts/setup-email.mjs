@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
- * Sets up email for the crew with Resend, asking before each part:
+ * Sets up email to the crew with Resend: each crew member answers
+ * `<member>@<domain>`. This provisions Upstash Redis for thread state when the
+ * project has none, stores your Resend API key (asked without echo, saved as a
+ * sensitive variable), LOPSI_EMAIL_DOMAIN and LOPSI_EMAIL_SENDERS, and creates
+ * each member's Resend webhook (`/eve/<member>/v1/resend`), saving its signing
+ * secret.
  *
- * - Sending: the Resend connector (scripts/setup-connector.mjs resend), so the
- *   crew can send email as the person asking, with approval for every send.
- * - Receiving: each crew member answers `<member>@<domain>`. This provisions
- *   Upstash Redis for thread state when the project has none, stores your
- *   Resend API key (asked without echo, saved as a sensitive variable),
- *   LOPSI_EMAIL_DOMAIN and LOPSI_EMAIL_SENDERS, and creates each member's
- *   Resend webhook (`/eve/<member>/v1/resend`), saving its signing secret.
+ * Sending email needs no script: add a Resend connector to the project in
+ * Vercel Connect, and the crew uses it like any other service.
  *
  * Safe to re-run: it skips what's set up and creates missing webhooks, for
  * example after you add a crew member. Values are saved for production and
@@ -17,7 +17,6 @@
  * Usage: pnpm setup:email
  */
 
-import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import {
   memberAddress,
@@ -209,16 +208,6 @@ async function ensureWebhooks(apiKey, envs, baseUrl, members) {
 try {
   const project = api(`/v9/projects/${encodeURIComponent(projectId)}`);
   console.log(`\n  Email for ${project.name}, with Resend.\n`);
-
-  if (
-    await confirm(
-      "Let the crew send email (as the person asking, approving each send)?"
-    )
-  ) {
-    execFileSync("node", ["scripts/setup-connector.mjs", "resend"], {
-      stdio: "inherit",
-    });
-  }
 
   if (await confirm("Let people email the crew?")) {
     const members = emailMembers();

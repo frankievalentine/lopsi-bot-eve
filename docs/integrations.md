@@ -1,35 +1,48 @@
 # Integrations
 
-The crew reaches other services and people three ways. Each is off until you set it up, from a clone of your repository linked to its Vercel project (`vercel link`):
+The crew reaches other services through [Vercel Connect](https://vercel.com/docs/connect), whatever the service: you add it in Vercel, and Lopsi picks it up. Nothing in this repository names a service, and there's nothing to run or redeploy.
 
-| Integration | What it gives the crew | Set up with |
+| Integration | What it gives the crew | Set up in |
 | --- | --- | --- |
-| [Connectors](#connectors) | Tools from a service's MCP server, acting as the person asking: Linear, Notion, Sentry, Resend, or any MCP service in Vercel Connect | `pnpm setup:connector <service>` |
-| [Email](#email) | An address per crew member that people can write to, and email sent from the crew (through the Resend connector) | `pnpm setup:email` |
-| [Channels](#channels) | A messaging channel per crew member: AgentPhone, Dial and Sendblue (SMS, iMessage, voice), Kapso (WhatsApp), Lark / Feishu, Liveblocks and Velt (comment threads), Novu and Zernio (several platforms) | `pnpm setup:channel <channel>` |
+| [Services](#services) | Any of Vercel Connect's services: Slack, Google, Stripe, Linear, Notion, GitHub, Sentry, and the rest | Vercel Connect |
+| [Chat in Slack or Telegram](#chat-in-slack-or-telegram) | People talk to a crew member there, as well as in the dashboard | Vercel Connect, then Settings |
+| [Email](#email) | An address per crew member that people can write to | `pnpm setup:email` |
 
-Settings → **Integrations** in the dashboard shows which are Active; Settings → **Crew** shows each member's services and active channels. Every integration follows the same rules: anything that changes something waits for approval, and on email and channels only senders you allow reach the crew.
+## Let Lopsi see your connectors
 
-## Connectors
+A deployment can't list its own connectors with its OIDC token, so Lopsi needs a Vercel access token for that:
 
-The crew can use any service with an MCP server through [Vercel Connect](https://vercel.com/docs/connect). Linear, Notion, Sentry and Resend are listed already. None is on until you set it up, so the agent never reaches for a service it can't use:
+1. [Create a token](https://vercel.com/account/tokens) scoped to the project's team, with an expiry.
+2. Add it to the project as `VERCEL_TOKEN`, marked **Sensitive**, then redeploy. The Deploy button asks for it up front.
 
-```sh
-pnpm setup:connector linear                      # listed in connectors.json
-pnpm setup:connector asana                       # any Vercel Connect service with MCP
-pnpm setup:connector https://mcp.example.com/mcp --name Example --description "What it does"
-eve deploy
-```
+Only the server reads it: the model, the sandbox and the browser never see it. A Vercel token can do anything on its team, so treat it like a password, and replace it before it expires. Without it, Settings → **Integrations** says so, and the crew has no services.
 
-The script creates a Vercel Connect connector for the service, attaches it to the project and stores its UID in `LINEAR_CONNECTOR` (or `NOTION_CONNECTOR`, `SENTRY_CONNECTOR`). The first time the crew needs the service, it asks you in the chat to connect your own account. In starter mode everyone shares one connection.
+## Services
 
-- Tools the service marks read-only run straight away; every other call waits for your approval.
-- An entry can narrow what the crew sees and when it asks: `tools` (`{ "allow": [...] }` for an explicit list, so tools the server adds later stay hidden, or `{ "block": [...] }`) and `approve` (tools that always ask first, whatever the server says about them). Resend sees 47 of its tools (campaigns, templates, one-off sends, contacts, delivery logs, verified domains; no account administration), and sending or deleting always asks.
-- **Connections** in the sidebar shows which services you've connected, and disconnects one by revoking your grant at Vercel Connect.
-- A service that isn't listed yet is added to `apps/web/lib/connectors.json` with the MCP URL its connector reports; commit that file. Find services with `vercel connect discover <query>`.
-- A connector you created in the Vercel dashboard is reused when it's for the same MCP server.
-- Some services need your own OAuth client: pass its credentials with `--data <file>` (`vercel connect create <service> --help` says which).
-- Services without an MCP server (API keys or OAuth to an API only) can't become crew tools this way; they need a tool written for their API.
+Open Settings → **Integrations** → **Add in Vercel**. It takes you to the project's Connect page. Create a connector for any service and attach it to this project. Within a minute it's listed in Settings and the crew can use it; **Refresh** checks sooner.
+
+What the crew gets depends on the connector:
+
+- **An MCP server** (a connector created with the MCP method): its tools, named after the connector (`my-linear__search_issues`). Tools the server marks read-only run straight away; every other call waits for approval.
+- **Anything else** (an API key or OAuth to the service's API: Stripe, Google, Slack, Telegram, …): the `call_service` tool, which calls the service's HTTP API with the connector's credential. The credential is added on the server, so the model never sees it.
+  - The first time the credential would go to a new host (`api.stripe.com`), the crew asks you first. Once you approve, later reads there go ahead for everyone. Settings lists the approved hosts for each connector, and removing one makes the crew ask again. Without the Blob store nothing is remembered, so every call asks.
+  - Anything other than a read (`GET`) always asks first.
+  - Redirects aren't followed, so the credential never reaches a host nobody approved.
+
+Where a service supports it, each person signs in with their own account the first time the crew needs it, with a sign-in card in the chat. **Connections** in the sidebar shows which you've connected, and disconnects one. Otherwise the crew uses the connector's own credential, the same for everyone. In starter mode everyone shares one identity, and so one connection.
+
+To limit a crew member to some services, list their names in its `crew.json` `connectors` (Settings shows each name), or pick them in **Edit**.
+
+The dashboard opens pull requests through a GitHub connector: the one the Deploy button adds (`GITHUB_CONNECTOR`), or any GitHub connector attached to the project.
+
+## Chat in Slack or Telegram
+
+Besides the dashboard, people can talk to Lopsi in Slack or Telegram. Add a Slack or Telegram connector in Vercel Connect, as above. Then, in Settings → **Integrations**, click **Turn On** next to **Chat with Lopsi**. That has the connector send its messages to `/eve/lopsi/v1/slack` (or `/telegram`). Connect checks each message and forwards it, so the deployment holds no Slack or Telegram secret.
+
+- **Slack:** anyone in the workspace where the app is installed can mention or message it.
+- **Telegram:** anyone can find a bot, so only private chats from people on `LOPSI_TELEGRAM_SENDERS` (usernames or user ids, comma-separated) get an answer. Everything else is dropped without a reply, and the deployment's logs name the sender, so you can add them.
+- The same connector also lets the crew send messages there through `call_service`, for example to post a summary to a channel, or message you when something finishes. A Telegram bot can only message people who have messaged it first.
+- Lopsi answers these channels. To have another member answer instead, move `agents/lopsi/agent/channels/slack.ts` (or `telegram.ts`) to that member and change its `MEMBER_ID`.
 
 ## Email
 
@@ -39,24 +52,9 @@ The crew can send and receive email through [Resend](https://resend.com):
 pnpm setup:email
 ```
 
-It asks whether the crew should **send** email (the Resend connector: each person connects their own Resend account, and every send waits for approval) and **receive** it. For receiving, it adds [Upstash for Redis](https://vercel.com/marketplace/upstash) from the Vercel Marketplace for thread state if the project has none, asks for your Resend API key (not echoed; saved as a sensitive variable), the domain to receive at, and who may write, then creates each crew member's Resend webhook. Deploy afterwards.
+To have the crew **send** email, add a Resend connector in Vercel Connect, like any other [service](#services). The script sets up **receiving**: it adds [Upstash for Redis](https://vercel.com/marketplace/upstash) from the Vercel Marketplace for thread state if the project has none, asks for your Resend API key (not echoed; saved as a sensitive variable), the domain to receive at, and who may write, then creates each crew member's Resend webhook. Deploy afterwards.
 
 - Each crew member answers its own address, `<member>@<domain>`. Replies stay in the email thread; approvals and questions arrive as numbered options you answer by replying.
 - Only senders on `LOPSI_EMAIL_SENDERS` (addresses, or whole domains as `@example.com`) reach the crew, and only when the receiving server reports a DMARC pass for the sender's domain, so a forged From address doesn't get through. Everything else is dropped without a reply; the deployment's logs say why. Set `LOPSI_EMAIL_AUTHSERV_ID` to the receiving server's name to trust only its results.
 - The domain needs receiving turned on in Resend (an MX record), or use your account's `<id>.resend.app` address.
 - Re-run `pnpm setup:email` after adding a crew member, to create its webhook.
-
-## Channels
-
-Besides the web chat and email, a crew member can answer a messaging channel through its provider's own [Chat SDK](https://chat-sdk.dev) adapter: AgentPhone, Dial and Sendblue (SMS, iMessage, voice), Kapso (WhatsApp), Lark / Feishu, Liveblocks and Velt (comment threads), Novu and Zernio (several platforms at once).
-
-```sh
-pnpm setup:channel sendblue
-```
-
-It asks which crew member answers, installs the adapter, writes `agents/<member>/agent/channels/<channel>.ts`, adds Upstash for Redis if the project has none, asks for the provider's keys (secrets aren't echoed) and who may write (`LOPSI_<CHANNEL>_SENDERS`: phone numbers or the provider's user ids), and prints the webhook URL to give the provider. Commit the new file, `package.json` and `pnpm-lock.yaml`, then deploy.
-
-- One crew member answers each channel. Everyone else's messages are dropped without a reply; the turn runs as the sender, so approvals and sign-ins reach only them. Phone numbers can be spoofed, which is why actions still ask first.
-- A channel whose variables aren't set is off: its webhook fails the provider's signature check and every message is dropped, so a committed channel never breaks `eve dev` or a deployment.
-- **Settings → Integrations** lists each channel as Off or Active; **Crew** shows which member answers which.
-- Beeper isn't offered: its adapter (0.2.0) can't be loaded by Node as published.

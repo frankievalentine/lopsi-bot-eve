@@ -48,7 +48,7 @@
     },
     "connectors": {
       "type": "array",
-      "description": "Which connectors (ids in apps/web/lib/connectors.json) this crew member may use. Leave it out to allow all of them.",
+      "description": "Which connected services this crew member may use, by the name Settings shows for each. Leave it out to allow all of them.",
       "items": {
         "type": "string",
         "pattern": "^[a-z][a-z0-9-]{0,30}$"

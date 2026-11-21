@@ -7,6 +7,8 @@ import {
   GitPullRequestIcon,
   PencilIcon,
   PlugIcon,
+  RefreshCwIcon,
+  XIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useEffect, useRef, useState } from "react";
@@ -21,9 +23,16 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AccessMode } from "@/lib/access";
 import type { MemberSetup, MemberSetupResult } from "@/lib/agent-info";
+import type { ConnectorsUnavailable } from "@/lib/connectors";
 import { CREW, type CrewMember } from "@/lib/crew";
 import { cn } from "@/lib/utils";
-import { loadSettings, type SettingsStatus } from "./settings-actions";
+import {
+  allowChat,
+  forgetDomain,
+  type Integration,
+  loadSettings,
+  type SettingsStatus,
+} from "./settings-actions";
 
 const ACCESS: Record<
   AccessMode | "demo",
@@ -77,14 +86,17 @@ const USAGE_LINKS = [
   },
 ] as const;
 
-const CONNECT_LINK =
-  "https://vercel.com/d?to=/%5Bteam%5D/~/connect&title=Go+to+Connect";
+/** This project's Connect page, where connectors are created and attached. */
+const PROJECT_CONNECT_LINK =
+  "https://vercel.com/d?to=%2F%5Bteam%5D%2F%5Bproject%5D%2Fconnect&title=Go+to+Connect";
+
+const TOKENS_LINK = "https://vercel.com/account/tokens";
+
+const ENV_LINK =
+  "https://vercel.com/d?to=%2F%5Bteam%5D%2F%5Bproject%5D%2Fsettings%2Fenvironment-variables&title=Environment+Variables";
 
 /** Crew members per page in the Crew section's picker. */
 const CREW_PAGE_SIZE = 4;
-
-/** Shown once, under Channels: its connector is how the crew starts an email. */
-const RESEND = "resend";
 
 const TRAILING_PERIOD = /\.$/u;
 
@@ -289,159 +301,289 @@ function PullRequestsRow({
   );
 }
 
-interface Integration {
-  readonly active: boolean;
-  readonly description: string;
-  /** Where to set it up. */
-  readonly guide: string;
-  readonly id: string;
-  readonly name: string;
+const UNAVAILABLE: Record<
+  ConnectorsUnavailable,
+  { readonly hint: string; readonly label: string }
+> = {
+  "no-project": {
+    hint: "Locally, run `vercel link` and `vercel env pull` so Lopsi knows its project.",
+    label: "Lopsi can't tell which Vercel project it is",
+  },
+  "no-token": {
+    hint: "Create a Vercel token for this team and add it to the project as VERCEL_TOKEN (Sensitive), then redeploy. Only the server reads it.",
+    label: "Lopsi can't see your connectors yet",
+  },
+  refused: {
+    hint: "VERCEL_TOKEN may have expired, or not reach this project's team. Replace it, then redeploy.",
+    label: "Vercel refused VERCEL_TOKEN",
+  },
+};
+
+function ServiceIcon({ integration }: { readonly integration: Integration }) {
+  return integration.icon ? (
+    <span className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-md">
+      {/* biome-ignore lint/performance/noImgElement: Vercel Connect's own icon, as a data URI. */}
+      <img
+        alt=""
+        className="size-4.5"
+        height={18}
+        src={integration.icon}
+        width={18}
+      />
+    </span>
+  ) : (
+    <span
+      aria-hidden="true"
+      className="bg-muted text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-md text-xs font-medium"
+    >
+      {integration.serviceName.charAt(0)}
+    </span>
+  );
+}
+
+const CHAT_NAMES = { slack: "Slack", telegram: "Telegram" } as const;
+
+function ChatRows({
+  integration,
+  onChanged,
+}: {
+  readonly integration: Integration;
+  readonly onChanged: () => void;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const { chat } = integration;
+  if (chat === undefined || chat.members.length === 0) {
+    return null;
+  }
+  const turnOn = (memberId: string) => {
+    setBusy(memberId);
+    setError(null);
+    allowChat(integration.id, memberId)
+      .then((result) => {
+        if (result.ok) {
+          onChanged();
+        } else {
+          setError(result.error ?? "Couldn't turn it on.");
+        }
+      })
+      .catch(() => setError("Couldn't turn it on."))
+      .finally(() => setBusy(null));
+  };
+  return (
+    <div className="space-y-1.5 border-t pt-2">
+      {chat.members.map((member) => (
+        <div
+          className="flex items-center justify-between gap-2 text-xs"
+          key={member.id}
+        >
+          <span className="text-muted-foreground">
+            Chat with {member.name} in {CHAT_NAMES[chat.service]}
+          </span>
+          {member.on ? (
+            <Status active={true} />
+          ) : (
+            <Button
+              disabled={busy !== null}
+              onClick={() => turnOn(member.id)}
+              size="xs"
+              variant="outline"
+            >
+              {busy === member.id ? "Turning On…" : "Turn On"}
+            </Button>
+          )}
+        </div>
+      ))}
+      {chat.service === "telegram" ? (
+        <p className="text-muted-foreground text-xs text-pretty">
+          Only people on LOPSI_TELEGRAM_SENDERS (usernames or ids) get answers.
+        </p>
+      ) : null}
+      {error ? (
+        <p className="text-destructive text-xs" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function DomainRows({
+  integration,
+  onChanged,
+}: {
+  readonly integration: Integration;
+  readonly onChanged: () => void;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const { domains } = integration;
+  if (domains === undefined) {
+    return null;
+  }
+  const forget = (host: string) => {
+    setBusy(host);
+    forgetDomain(integration.id, host)
+      .then(onChanged)
+      .catch(() => undefined)
+      .finally(() => setBusy(null));
+  };
+  return (
+    <div className="space-y-1.5 border-t pt-2 text-xs">
+      {domains.length === 0 ? (
+        <p className="text-muted-foreground text-pretty">
+          The crew asks before its credential goes to any host.
+        </p>
+      ) : (
+        <>
+          <p className="text-muted-foreground">Approved hosts</p>
+          <ul className="flex flex-wrap gap-1.5">
+            {domains.map((host) => (
+              <li
+                className="bg-muted inline-flex items-center gap-1 rounded-md py-0.5 pr-0.5 pl-2 font-mono"
+                key={host}
+              >
+                {host}
+                <Button
+                  aria-label={`Ask Again Before Using ${host}`}
+                  disabled={busy !== null}
+                  onClick={() => forget(host)}
+                  size="icon-xs"
+                  variant="ghost"
+                >
+                  <XIcon className="size-3" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  );
 }
 
 function IntegrationCard({
   integration,
+  onChanged,
 }: {
   readonly integration: Integration;
+  readonly onChanged: () => void;
 }) {
-  const { active, description, guide, name } = integration;
-  const body = (
-    <>
-      <span
-        aria-hidden="true"
-        className="bg-muted text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-md text-xs font-medium"
-      >
-        {name.charAt(0)}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center justify-between gap-2">
-          <span className="truncate text-sm font-medium">{name}</span>
-          {active ? (
-            <Status active={true} />
-          ) : (
-            <span className="text-muted-foreground shrink-0 text-xs">
-              <span className="group-hover/card:hidden group-focus-visible/card:hidden">
-                Off
-              </span>
-              <span className="text-foreground hidden items-center gap-1 group-hover/card:inline-flex group-focus-visible/card:inline-flex">
-                Set Up
-                <ExternalLinkIcon aria-hidden="true" className="size-3" />
-              </span>
-            </span>
-          )}
-        </span>
-        <span className="text-muted-foreground mt-0.5 line-clamp-2 text-xs text-pretty">
-          {description}
-        </span>
-      </span>
-    </>
-  );
-  const frame = "flex items-start gap-3 rounded-lg border p-3 text-left";
-  return active ? (
-    <div className={frame}>{body}</div>
-  ) : (
-    <a
-      aria-label={`Set Up ${name}`}
-      className={cn(
-        frame,
-        "group/card hover:bg-accent focus-visible:ring-ring/50 transition-colors outline-none focus-visible:ring-3"
-      )}
-      href={guide}
-      rel="noreferrer"
-      target="_blank"
-    >
-      {body}
-    </a>
-  );
-}
-
-function IntegrationGroup({
-  action,
-  integrations,
-  title,
-}: {
-  readonly action?: ReactNode;
-  readonly integrations: readonly Integration[];
-  readonly title: string;
-}) {
-  const active = integrations.filter((entry) => entry.active);
+  const { kind, perPerson, serviceName, title } = integration;
   return (
-    <section className="space-y-2">
-      <div className="flex min-h-7 flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <h3 className="text-sm font-medium">
-          {title}
-          <span className="text-muted-foreground ml-2 text-xs font-normal">
-            {active.length} of {integrations.length} active
+    <div className="space-y-2 rounded-lg border p-3">
+      <div className="flex items-start gap-3">
+        <ServiceIcon integration={integration} />
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center justify-between gap-2">
+            <span className="truncate text-sm font-medium">{title}</span>
+            <Status active={true} />
           </span>
-        </h3>
-        {action}
+          <span className="text-muted-foreground mt-0.5 block text-xs text-pretty">
+            {title === serviceName ? "" : `${serviceName} · `}
+            {kind === "mcp" ? "Its MCP tools" : "Its API"}
+            {" · "}
+            {perPerson ? "Each person signs in" : "Shared credential"}
+          </span>
+        </span>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {[...active, ...integrations.filter((entry) => !entry.active)].map(
-          (entry) => (
-            <IntegrationCard integration={entry} key={entry.id} />
-          )
-        )}
-      </div>
-    </section>
+      <ChatRows integration={integration} onChanged={onChanged} />
+      <DomainRows integration={integration} onChanged={onChanged} />
+    </div>
   );
 }
 
 function IntegrationsSection({
+  onChanged,
   onConnections,
   status,
 }: {
+  readonly onChanged: () => void;
   readonly onConnections: (() => void) | undefined;
   readonly status: SettingsStatus;
 }) {
+  const { connectors } = status;
   return (
     <>
-      <IntegrationGroup
-        action={
-          <span className="flex items-center gap-3">
-            <External href={CONNECT_LINK}>Vercel Connect</External>
+      <section className="space-y-2">
+        <div className="flex min-h-7 flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <h3 className="text-sm font-medium">
+            Connected Services
+            {connectors.ok ? (
+              <span className="text-muted-foreground ml-2 text-xs font-normal">
+                {connectors.list.length}
+              </span>
+            ) : null}
+          </h3>
+          <span className="flex items-center gap-2">
             {onConnections ? (
               <Button onClick={onConnections} size="xs" variant="outline">
                 <PlugIcon className="size-3" />
                 Your Connections
               </Button>
             ) : null}
+            <Button onClick={onChanged} size="xs" variant="ghost">
+              <RefreshCwIcon className="size-3" />
+              Refresh
+            </Button>
+            <Button
+              render={
+                <a
+                  href={PROJECT_CONNECT_LINK}
+                  rel="noreferrer"
+                  target="_blank"
+                />
+              }
+              size="xs"
+            >
+              Add in Vercel
+              <ExternalLinkIcon aria-hidden="true" className="size-3" />
+            </Button>
           </span>
-        }
-        integrations={status.catalog
-          .filter((entry) => entry.id !== RESEND)
-          .map((entry) => ({
-            active: entry.configured,
-            description: entry.description,
-            guide: `${GUIDE}/integrations.md#connectors`,
-            id: entry.id,
-            name: entry.name,
-          }))}
-        title="Connectors"
-      />
-      <IntegrationGroup
-        integrations={[
-          {
-            // Either half counts: people emailing the crew, or the crew sending email.
-            active:
-              Object.keys(status.email).length > 0 ||
-              status.catalog.some(
-                (entry) => entry.id === RESEND && entry.configured
-              ),
-            description: "Email the crew, and have the crew send email.",
-            guide: `${GUIDE}/integrations.md#email`,
-            id: "email",
-            name: "Resend",
-          },
-          ...status.channels.map((entry) => ({
-            active: entry.configured,
-            description: entry.description,
-            guide: `${GUIDE}/integrations.md#channels`,
-            id: entry.id,
-            name: entry.name,
-          })),
-        ]}
-        title="Channels"
-      />
+        </div>
+        {connectors.ok ? null : (
+          <Group>
+            <Row
+              hint={UNAVAILABLE[connectors.reason].hint}
+              label={UNAVAILABLE[connectors.reason].label}
+            >
+              {connectors.reason === "no-project" ? null : (
+                <>
+                  <External href={TOKENS_LINK}>Create Token</External>
+                  <External href={ENV_LINK}>Environment Variables</External>
+                </>
+              )}
+            </Row>
+          </Group>
+        )}
+        {connectors.ok && connectors.list.length === 0 ? (
+          <Group>
+            <Row
+              hint="Add any service from Vercel Connect (Slack, Google, Stripe, Linear, …) and attach it to this project. It shows up here within a minute; refresh to check."
+              label="Nothing connected yet"
+            />
+          </Group>
+        ) : null}
+        {connectors.ok && connectors.list.length > 0 ? (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {connectors.list.map((integration) => (
+              <IntegrationCard
+                integration={integration}
+                key={integration.id}
+                onChanged={onChanged}
+              />
+            ))}
+          </div>
+        ) : null}
+      </section>
+      <Group title="Email">
+        <Row
+          hint="People email the crew at its own address, through Resend."
+          label="Resend"
+        >
+          <Status active={Object.keys(status.email).length > 0} />
+          <External href={`${GUIDE}/integrations.md#email`}>Guide</External>
+        </Row>
+      </Group>
     </>
   );
 }
@@ -472,12 +614,16 @@ function UsageSection({ status }: { readonly status: SettingsStatus }) {
 
 /** A member's setup that Edit doesn't cover, from its deployed agent. */
 function SetupGroups({
-  catalog,
+  connectors,
   setup,
 }: {
-  readonly catalog: SettingsStatus["catalog"];
+  readonly connectors: SettingsStatus["connectors"];
   readonly setup: MemberSetup;
 }) {
+  const titleOf = (name: string) =>
+    (connectors.ok
+      ? connectors.list.find((entry) => entry.name === name)?.title
+      : undefined) ?? name;
   const names = (list: readonly string[]) =>
     list.length > 0 ? list.join(", ") : "None";
   return (
@@ -485,13 +631,7 @@ function SetupGroups({
       <Group title="Services">
         {setup.connections.length > 0 ? (
           setup.connections.map((connection) => (
-            <Row
-              key={connection.name}
-              label={
-                catalog.find((entry) => entry.id === connection.name)?.name ??
-                connection.name
-              }
-            >
+            <Row key={connection.name} label={titleOf(connection.name)}>
               <span className="text-xs">
                 {connection.approval ? "Asks First" : "Runs Directly"}
               </span>
@@ -519,20 +659,21 @@ function SetupGroups({
 
 function MemberChannels({
   member,
-  result,
   status,
 }: {
   readonly member: CrewMember;
-  readonly result: MemberSetupResult | undefined;
   readonly status: SettingsStatus;
 }) {
   const email = status.email[member.id];
-  // A member's channel code exists whether or not it's set up, so its route
-  // alone doesn't mean it's on: only the ones set up count.
-  const routes = result?.ok ? result.setup.channels : [];
-  const active = status.channels.filter(
-    (entry) => entry.configured && routes.includes(entry.id)
-  );
+  const chats = status.connectors.ok
+    ? status.connectors.list.flatMap((integration) =>
+        integration.chat?.members.some(
+          (entry) => entry.id === member.id && entry.on
+        )
+          ? [integration]
+          : []
+      )
+    : [];
   return (
     <Group title="Channels">
       <Row label="Web Chat">
@@ -541,8 +682,12 @@ function MemberChannels({
       <Row hint={email} label="Resend">
         <Status active={email !== undefined} />
       </Row>
-      {active.map((entry) => (
-        <Row key={entry.id} label={entry.name}>
+      {chats.map((integration) => (
+        <Row
+          hint={integration.title}
+          key={integration.id}
+          label={integration.serviceName}
+        >
           <Status active={true} />
         </Row>
       ))}
@@ -595,9 +740,9 @@ function MemberDetail({
           </Button>
         ) : null}
       </div>
-      <MemberChannels member={member} result={result} status={status} />
+      <MemberChannels member={member} status={status} />
       {result?.ok ? (
-        <SetupGroups catalog={status.catalog} setup={result.setup} />
+        <SetupGroups connectors={status.connectors} setup={result.setup} />
       ) : (
         <Group>
           <Row
@@ -720,15 +865,19 @@ function CrewSection({
 
 type Loaded = Awaited<ReturnType<typeof loadSettings>>;
 
-/** Loads the settings each time the dialog opens. */
-function useSettings(open: boolean): Loaded | null {
+/** Loads the settings each time the dialog opens, and again on `reload`. */
+function useSettings(open: boolean): [Loaded | null, () => void] {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
+  const [version, setVersion] = useState(0);
   useEffect(() => {
     if (!open) {
       return;
     }
     let current = true;
-    setLoaded(null);
+    // A reload keeps what's shown until the new settings arrive.
+    if (version === 0) {
+      setLoaded(null);
+    }
     loadSettings()
       .then((result) => current && setLoaded(result))
       .catch(
@@ -738,8 +887,13 @@ function useSettings(open: boolean): Loaded | null {
     return () => {
       current = false;
     };
+  }, [open, version]);
+  useEffect(() => {
+    if (!open) {
+      setVersion(0);
+    }
   }, [open]);
-  return loaded;
+  return [loaded, () => setVersion((count) => count + 1)];
 }
 
 const SECTIONS = [
@@ -775,7 +929,7 @@ export function SettingsDialog({
   readonly open: boolean;
   readonly pendingCount: number | null;
 }) {
-  const loaded = useSettings(open);
+  const [loaded, reload] = useSettings(open);
   // Focus the dialog, not its first section: a ring there reads as a selection.
   const popup = useRef<HTMLDivElement>(null);
   const then = (action: (() => void) | undefined) =>
@@ -841,6 +995,7 @@ export function SettingsDialog({
               {panel(
                 "integrations",
                 <IntegrationsSection
+                  onChanged={reload}
                   onConnections={then(onConnections)}
                   status={loaded.status}
                 />

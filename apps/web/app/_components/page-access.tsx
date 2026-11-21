@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import type { ReactElement } from "react";
-import { configuredConnectors } from "@/lib/connectors";
+import { connectors as attachedConnectors } from "@/lib/connectors";
 import { currentAccount } from "@/lib/current-account";
 import { configChangesUnavailable } from "@/lib/github";
 import type { Account } from "./account";
@@ -30,23 +30,25 @@ export async function pageAccess(
 }
 
 /** What every dashboard page offers besides chats: connectors and changes by pull request. */
-export function dashboardFeatures(account: Account): {
+export async function dashboardFeatures(account: Account): Promise<{
   changes?: { readonly available: boolean; readonly reason?: string };
   connectors: readonly ConnectorSummary[];
-} {
+}> {
   if (account.kind === "demo") {
     return { connectors: [] };
   }
-  // Names only: connector UIDs stay on the server.
-  const connectors = configuredConnectors().map(({ id, name }) => ({
-    id,
-    name,
-  }));
+  // The ones each person signs in to, by name; nothing else about them leaves the server.
+  const connectors = (await attachedConnectors())
+    .filter((connector) => connector.perPerson)
+    .map(({ id, serviceName, title }) => ({
+      id,
+      name: title === serviceName ? title : `${serviceName} (${title})`,
+    }));
   // Configuration by pull request; local development edits files directly.
   if (account.kind === "open") {
     return { connectors };
   }
-  const reason = configChangesUnavailable();
+  const reason = await configChangesUnavailable();
   return {
     changes: {
       available: reason === undefined,
