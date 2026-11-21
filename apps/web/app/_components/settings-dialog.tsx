@@ -27,6 +27,7 @@ import type { SenderList } from "@/lib/allowed-senders";
 import type { ConnectorsUnavailable } from "@/lib/connectors";
 import { CREW, type CrewMember } from "@/lib/crew";
 import { cn } from "@/lib/utils";
+import { proposeTemplateUpdate, type UpdateResult } from "./config-actions";
 import {
   allowChat,
   forgetDomain,
@@ -247,14 +248,59 @@ function GeneralSection({
   );
 }
 
+/** Opens the pull request that updates this deployment to the newest release. */
+function UpdateButton() {
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<UpdateResult | null>(null);
+  if (result?.ok) {
+    return (
+      <External href={result.pull.url}>
+        {`Pull Request #${result.pull.number}`}
+      </External>
+    );
+  }
+  return (
+    <>
+      {result && !result.ok ? (
+        <span className="text-destructive w-full text-xs" role="alert">
+          {result.error}
+        </span>
+      ) : null}
+      <Button
+        disabled={busy}
+        onClick={() => {
+          setBusy(true);
+          proposeTemplateUpdate()
+            .then(setResult)
+            .catch(() =>
+              setResult({
+                error: "That didn't go through. Try again.",
+                ok: false,
+              })
+            )
+            .finally(() => setBusy(false));
+        }}
+        size="xs"
+      >
+        {busy ? "Opening Pull Request…" : "Update"}
+      </Button>
+    </>
+  );
+}
+
 function VersionRow({ status }: { readonly status: SettingsStatus }) {
   const { update, version } = status;
   if (update === undefined) {
     return <Row label="Version">{`v${version}`}</Row>;
   }
+  const canUpdate = status.github && !status.local && status.access !== "demo";
   return (
     <Row
-      hint={`You're on v${version}.`}
+      hint={
+        canUpdate
+          ? `You're on v${version}. Update opens a pull request with the new release; files you've changed are kept and listed in it.`
+          : `You're on v${version}.`
+      }
       label={
         update.security ? (
           <span className="text-destructive font-medium">
@@ -266,7 +312,11 @@ function VersionRow({ status }: { readonly status: SettingsStatus }) {
       }
     >
       <External href={update.url}>Release Notes</External>
-      <External href={`${GUIDE}/updating.md`}>How to Update</External>
+      {canUpdate ? (
+        <UpdateButton />
+      ) : (
+        <External href={`${GUIDE}/updating.md`}>How to Update</External>
+      )}
     </Row>
   );
 }

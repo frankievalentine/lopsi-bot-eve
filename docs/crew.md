@@ -17,7 +17,7 @@ Each chat has its own sandbox. The **Computer** button in the chat header shows 
 
 **Settings** in the sidebar (or the account menu on a phone) opens a dialog with four sections:
 
-- **General**: the access mode, where chat history is kept, the template version (and whether an update is out), where pull requests go, and [removing the project](removing.md).
+- **General**: the access mode, where chat history is kept, the template version (and, when one is out, **Update**, which opens a pull request with the new release; see [Updating](updating.md)), where pull requests go, and [removing the project](removing.md).
 - **Integrations**: the services attached in Vercel Connect, each with its status (Connected, Not connected, Credential failed, Can't check), **Add Connectors** and **Refresh**; chat in Slack or Telegram and who may message the bot; approved hosts; and Receive Email with who may email the crew. See [Integrations](integrations.md).
 - **Crew**: what each member has beyond its Edit form, from its deployed agent: active channels, services and whether they ask first, skills, schedules, subagents and sandbox.
 - **Usage**: the budget per chat (editable on Vercel, from $0.25 to $50; saving redeploys), and links to AI Gateway, Observability and Tracing.

@@ -16,6 +16,18 @@ const CHECK_EVERY_SECONDS = 3600;
 
 export const TEMPLATE_VERSION = template.version;
 
+const REPOSITORY = /^[\w.-]+\/[\w.-]+$/u;
+
+/**
+ * The template's GitHub repository (`owner/name`): template.json's, or
+ * `LOPSI_TEMPLATE_REPOSITORY` to follow another one, such as a fork or a test
+ * repository.
+ */
+export function templateRepository(): string {
+  const override = process.env.LOPSI_TEMPLATE_REPOSITORY?.trim();
+  return override && REPOSITORY.test(override) ? override : template.repository;
+}
+
 interface Release {
   readonly draft?: boolean;
   readonly html_url: string;
@@ -86,7 +98,7 @@ export async function checkForUpdate(
 ): Promise<TemplateUpdate | undefined> {
   try {
     const response = await send(
-      `https://api.github.com/repos/${template.repository}/releases?per_page=30`,
+      `https://api.github.com/repos/${templateRepository()}/releases?per_page=30`,
       {
         headers: { Accept: "application/vnd.github+json" },
         next: { revalidate: CHECK_EVERY_SECONDS },
