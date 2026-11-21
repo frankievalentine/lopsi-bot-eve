@@ -51,8 +51,8 @@ const ACCESS: Record<
   },
   open: { hint: "Local development has no sign-in.", label: "Open" },
   password: {
-    hint: "One shared password; everyone shares every chat.",
-    label: "Starter",
+    hint: "Everyone signs in with the same password and can open each other's chats.",
+    label: "Shared Password",
   },
   "too-short": {
     hint: "The password is under 16 characters, so nobody can sign in.",
@@ -213,8 +213,15 @@ function GeneralSection({
             <External href={`${GUIDE}/access.md`}>Guide</External>
           )}
         </Row>
-        <Row label="Chat History">
-          {status.history ? "On the Server" : "In Each Browser"}
+        <Row
+          hint={
+            status.history
+              ? "Your chats appear on any device you sign in on."
+              : "Your list of chats isn't saved anywhere else, so it won't appear on other devices."
+          }
+          label="Chat History"
+        >
+          {status.history ? "Saved to Your Account" : "This Browser Only"}
         </Row>
         <VersionRow status={status} />
         <PullRequestsRow
