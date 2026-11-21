@@ -26,7 +26,7 @@ Changes open the dashboard's own dialogs: Connections, Pending Changes, and a me
 
 ## Changing the crew from the dashboard
 
-Agents are code, so the dashboard never changes a running agent. **Edit** in a chat's menu (name, role, mascot, suggestions, order, model and instructions, plus which connectors the member may use, its built-in tools (shell, web search, web pages and how often they ask), and which domains its sandbox may reach) and **New crew member** in the sidebar each open a pull request against the branch this deployment was built from. Merging it deploys the change; **Pending Changes** lists the open ones.
+Agents are code, so the dashboard never changes a running agent. **Edit** in a chat's menu (name, role, mascot, suggestions, order, model and instructions, plus which connectors the member may use and when it asks before changing things in them, its built-in tools (shell, web search, web pages and how often they ask), and which domains its sandbox may reach) and **New crew member** in the sidebar each open a pull request against the branch this deployment was built from. Merging it deploys the change; **Pending Changes** lists the open ones.
 
 This needs a GitHub connector in Vercel Connect: the GitHub App the Deploy button creates (`GITHUB_CONNECTOR`), or any GitHub connector attached to the project. Install the app on the repository with read and write access to contents and pull requests. The repository and branch come from Vercel's Git variables; set `LOPSI_GITHUB_REPO` (`owner/repo`) and `LOPSI_GITHUB_BRANCH` to override them, as in local development.
 

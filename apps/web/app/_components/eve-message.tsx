@@ -353,6 +353,7 @@ function ToolRunView({
           })}
         </TaskContent>
       </Task>
+      <ApproveAll approvals={approvals} asks={asks} />
       {approvals.map((interaction) => (
         <ChoiceCard
           answer={interaction.answer}
@@ -431,11 +432,12 @@ function CardFrame({
 function useSend(onAnswers: Asks["onAnswers"]) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const send = async (answer: AgentAnswer) => {
+  /** One answer, or several in one message (eve answers each waiting request). */
+  const send = async (answers: AgentAnswer | readonly AgentAnswer[]) => {
     setSending(true);
     setError(null);
     try {
-      await onAnswers([answer]);
+      await onAnswers("interactionId" in answers ? [answers] : answers);
     } catch (cause) {
       setError(
         cause instanceof Error
@@ -471,6 +473,49 @@ function Answered({
     <p className="text-muted-foreground text-sm">
       Answered: {option?.label ?? answer.text ?? answer.optionId}
     </p>
+  );
+}
+
+/** eve's Approve option on an approval (`approve`), else its main action. */
+function approveOptionOf(interaction: Interaction): string | undefined {
+  const options = interaction.request.options ?? [];
+  return (options.find((option) => option.id === "approve") ?? options[0])?.id;
+}
+
+/**
+ * Several approvals waiting on one run of calls, such as reads the crew sent
+ * at once: one click approves them all, in one message. Each card below still
+ * shows what it approves, and each is still answered and recorded on its own.
+ */
+function ApproveAll({
+  approvals,
+  asks,
+}: {
+  readonly approvals: readonly Interaction[];
+  readonly asks: Asks;
+}) {
+  const { error, send, sending } = useSend(asks.onAnswers);
+  const open = approvals.flatMap((interaction) => {
+    const optionId = approveOptionOf(interaction);
+    return interaction.answer === undefined &&
+      optionId !== undefined &&
+      asks.canRespond(interaction.interactionId)
+      ? [{ interactionId: interaction.interactionId, optionId }]
+      : [];
+  });
+  if (open.length < 2) {
+    return null;
+  }
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2">
+      <span className="text-muted-foreground text-sm">
+        {open.length} approvals waiting
+      </span>
+      <Button disabled={sending} onClick={() => send(open)} size="sm">
+        Approve all ({open.length})
+      </Button>
+      <AnswerError error={error} />
+    </div>
   );
 }
 

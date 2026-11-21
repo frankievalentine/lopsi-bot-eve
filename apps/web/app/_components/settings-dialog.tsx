@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AccessMode } from "@/lib/access";
 import type { MemberSetup, MemberSetupResult } from "@/lib/agent-info";
 import type { SenderList } from "@/lib/allowed-senders";
+import { APPROVAL_LABELS, type ApprovalMode } from "@/lib/approval-labels";
 import type { ConnectorsUnavailable } from "@/lib/connectors";
 import { CREW, type CrewMember } from "@/lib/crew";
 import { cn } from "@/lib/utils";
@@ -1069,9 +1070,12 @@ function UsageSection({ status }: { readonly status: SettingsStatus }) {
 
 /** A member's setup that Edit doesn't cover, from its deployed agent. */
 function SetupGroups({
+  approvals,
   connectors,
   setup,
 }: {
+  /** The member's approval mode, which every service's changes follow. */
+  readonly approvals: ApprovalMode;
   readonly connectors: SettingsStatus["connectors"];
   readonly setup: MemberSetup;
 }) {
@@ -1088,7 +1092,7 @@ function SetupGroups({
           setup.connections.map((connection) => (
             <Row key={connection.name} label={titleOf(connection.name)}>
               <span className="text-xs">
-                {connection.approval ? "Asks First" : "Runs Directly"}
+                {APPROVAL_LABELS[approvals].short}
               </span>
             </Row>
           ))
@@ -1198,7 +1202,11 @@ function MemberDetail({
       </div>
       <MemberChannels member={member} status={status} />
       {result?.ok ? (
-        <SetupGroups connectors={status.connectors} setup={result.setup} />
+        <SetupGroups
+          approvals={member.approvals ?? "always"}
+          connectors={status.connectors}
+          setup={result.setup}
+        />
       ) : (
         <Group>
           <Row

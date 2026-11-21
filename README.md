@@ -16,7 +16,7 @@ An [eve](https://eve.dev) template for Vercel: a crew of AI agents, each with it
 - **A dashboard to work with them.** Chat with tool runs, approvals and questions; a computer panel showing each chat's sandbox; chat history on every device with Sign in with Vercel; Settings.
 - **Changes by pull request.** Edit a crew member's name, model, instructions, tools or connectors in the dashboard, and it opens a pull request. Nothing changes until you merge it.
 - **Integrations.** Any service in [Vercel Connect](https://vercel.com/docs/connect) (Slack, Google, Stripe, Linear, Notion and the rest), added in Vercel and picked up without a redeploy. Chat with the crew in Slack or Telegram, and email it.
-- **Safe by default.** A shared password to start, or Sign in with Vercel for your team. The shell has no network, and anything that changes something asks first.
+- **Safe by default.** A shared password to start, or Sign in with Vercel for your team. The shell has no network, and anything that changes something asks first by default (each crew member's approval mode can relax that).
 
 ## Deploy
 

@@ -13,8 +13,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { ReasoningLevel } from "@/lib/agent-model";
+import {
+  APPROVAL_CHOICES,
+  APPROVAL_LABELS,
+  type ApprovalMode,
+} from "@/lib/approval-labels";
 import type { MemberConfig } from "@/lib/config-changes";
 import type { PullRequest } from "@/lib/github";
 import { cn } from "@/lib/utils";
@@ -66,6 +78,7 @@ type Mode =
 
 interface Form {
   readonly access: AccessForm;
+  readonly approvals: ApprovalMode;
   readonly fallbacks: readonly string[];
   readonly id: string;
   readonly instructions: string;
@@ -80,6 +93,7 @@ interface Form {
 
 const EMPTY_FORM: Form = {
   access: NEW_ACCESS,
+  approvals: "always",
   fallbacks: [],
   id: "",
   instructions: NEW_INSTRUCTIONS,
@@ -95,6 +109,7 @@ const EMPTY_FORM: Form = {
 function formOf(config: MemberConfig): Form {
   return {
     access: accessFormOf(config),
+    approvals: config.crew.approvals ?? "always",
     fallbacks: config.model?.fallbacks ?? [],
     id: "",
     instructions: config.instructions ?? "",
@@ -122,6 +137,8 @@ function configOf(form: Form, from: MemberConfig | undefined): MemberConfig {
     // A new member gets the template member's tools and network.
     ...(from === undefined ? {} : { access }),
     crew: {
+      // "always" is the default, left out of crew.json.
+      ...(form.approvals === "always" ? {} : { approvals: form.approvals }),
       ...(connectors === undefined ? {} : { connectors }),
       mascot: form.mascot,
       name: form.name.trim(),
@@ -505,8 +522,57 @@ function MemberFields({
         value={form.access}
       />
 
+      <ApprovalField onChange={set("approvals")} value={form.approvals} />
+
       <InstructionsField editing={editing} form={form} from={from} set={set} />
     </>
+  );
+}
+
+/** When the member asks before changing things in connected services (crew.json `approvals`). */
+function ApprovalField({
+  onChange,
+  value,
+}: {
+  readonly onChange: (value: ApprovalMode) => void;
+  readonly value: ApprovalMode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5 text-sm">
+      <span className="font-medium">Changes in connected services</span>
+      <Select
+        items={APPROVAL_CHOICES.map((mode) => ({
+          label: APPROVAL_LABELS[mode].label,
+          value: mode,
+        }))}
+        onValueChange={(next: ApprovalMode | null) => next && onChange(next)}
+        value={value}
+      >
+        <SelectTrigger className="w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {APPROVAL_CHOICES.map((mode) => (
+            <SelectItem key={mode} value={mode}>
+              {APPROVAL_LABELS[mode].label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <span
+        className={cn(
+          "text-xs",
+          value === "never" ? "text-destructive" : "text-muted-foreground"
+        )}
+        role={value === "never" ? "alert" : undefined}
+      >
+        {APPROVAL_LABELS[value].hint}
+      </span>
+      <span className="text-muted-foreground text-xs">
+        Whatever you choose, the first call to a new website asks once, so a
+        credential only goes where someone allowed.
+      </span>
+    </div>
   );
 }
 
