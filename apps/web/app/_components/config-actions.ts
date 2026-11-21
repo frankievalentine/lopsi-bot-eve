@@ -207,6 +207,7 @@ export async function proposeMemberEdit(
 
 const NewMemberSchema = z.object({
   config: z.object({
+    access: AccessSchema.optional(),
     crew: CrewSchema,
     instructions: z
       .string()

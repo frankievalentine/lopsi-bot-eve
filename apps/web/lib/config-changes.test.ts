@@ -5,6 +5,7 @@ import {
   ConfigConflictError,
   type MemberConfig,
   memberEditFiles,
+  newMemberFiles,
   readMemberConfig,
 } from "./config-changes";
 import type { BranchSnapshot } from "./github";
@@ -116,6 +117,68 @@ describe("memberEditFiles", () => {
     const config = await current();
     await expect(
       memberEditFiles(snapshot, "nobody", config, config)
+    ).rejects.toThrow(ConfigConflictError);
+  });
+});
+
+describe("newMemberFiles", () => {
+  const config = {
+    crew: { mascot: "purser" as const, name: "Ledger", role: "Finance" },
+    instructions: "Keep the books.",
+    model: { model: "anthropic/claude-sonnet-5.5" },
+  };
+  const tool = (file: string) => `agents/ledger/agent/tools/${file}`;
+
+  it("copies the template member's tools without access", async () => {
+    const files = await newMemberFiles(snapshot, "ledger", config);
+    expect(files[tool("web_fetch.ts")]).toBe(
+      await snapshot.readFile(`${AGENT}/tools/web_fetch.ts`)
+    );
+    expect(files).not.toHaveProperty(tool("bash.ts"));
+    expect(files["agents/ledger/agent/sandbox.ts"]).toBeDefined();
+  });
+
+  it("writes the tools it was given", async () => {
+    const files = await newMemberFiles(snapshot, "ledger", {
+      ...config,
+      access: { bash: "off", webFetch: "once", webSearch: "on" },
+    });
+    expect(files[tool("bash.ts")]).toContain("disableTool()");
+    expect(files[tool("web_fetch.ts")]).toContain("once");
+    expect(files).not.toHaveProperty(tool("web_search.ts"));
+    // Settings it wasn't given stay as the template's.
+    expect(files["agents/ledger/agent/sandbox.ts"]).toBe(
+      await snapshot.readFile(`${AGENT}/sandbox.ts`)
+    );
+  });
+
+  it("drops a copied tool file when the tool is back to its default", async () => {
+    const searchOff = `${AGENT}/tools/web_search.ts`;
+    const withSearchOff: BranchSnapshot = {
+      ...snapshot,
+      paths: new Set([...snapshot.paths, searchOff]),
+      readFile: (path) =>
+        path === searchOff
+          ? Promise.resolve(
+              'import { disableTool } from "eve/tools";\n\nexport default disableTool();\n'
+            )
+          : snapshot.readFile(path),
+    };
+    const copied = await newMemberFiles(withSearchOff, "ledger", config);
+    expect(copied[tool("web_search.ts")]).toContain("disableTool()");
+    const files = await newMemberFiles(withSearchOff, "ledger", {
+      ...config,
+      access: { webSearch: "on" },
+    });
+    expect(files).not.toHaveProperty(tool("web_search.ts"));
+  });
+
+  it("refuses access it can't write", async () => {
+    await expect(
+      newMemberFiles(snapshot, "ledger", {
+        ...config,
+        access: { sandboxDomains: ["not a domain"] },
+      })
     ).rejects.toThrow(ConfigConflictError);
   });
 });

@@ -289,13 +289,16 @@ function withMemberId(path: string, content: string, id: string): string {
 /**
  * The files for a new crew member: its crew.json, instructions and model, the
  * template member's shared files (TEMPLATE_PATHS), and the regenerated crew list.
+ * `access` replaces the copied tool and sandbox files it sets; a tool turned
+ * back on (its default) has no file.
  *
  * @throws {@link ConfigConflictError} For a taken or invalid id, or a missing template.
  */
 export async function newMemberFiles(
   snapshot: BranchSnapshot,
   id: string,
-  config: Required<Pick<MemberConfig, "crew" | "instructions" | "model">>
+  config: Required<Pick<MemberConfig, "crew" | "instructions" | "model">> &
+    Pick<MemberConfig, "access">
 ): Promise<Record<string, string>> {
   if (!CREW_ID.test(id)) {
     throw new ConfigConflictError(
@@ -337,5 +340,35 @@ export async function newMemberFiles(
         withMemberId(path, content, id);
     }
   }
+  for (const [path, content] of Object.entries(newAccessFiles(id, config))) {
+    if (content === null) {
+      delete files[path];
+    } else {
+      files[path] = content;
+    }
+  }
   return files;
+}
+
+/** A new member's tool and sandbox files for the access it was given. */
+function newAccessFiles(
+  id: string,
+  { access }: Pick<MemberConfig, "access">
+): Record<string, string | null> {
+  if (access === undefined) {
+    return {};
+  }
+  try {
+    return Object.fromEntries(
+      Object.entries(writeMemberAccess(access)).map(([file, content]) => [
+        accessPath(id, file),
+        content,
+      ])
+    );
+  } catch (error) {
+    throw new ConfigConflictError(
+      error instanceof Error ? error.message : String(error),
+      { cause: error }
+    );
+  }
 }
