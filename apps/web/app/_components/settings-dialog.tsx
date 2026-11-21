@@ -6,7 +6,6 @@ import {
   ExternalLinkIcon,
   GitPullRequestIcon,
   PencilIcon,
-  PlugIcon,
   RefreshCwIcon,
   XIcon,
 } from "lucide-react";
@@ -832,11 +831,9 @@ function IntegrationRow({
 
 function IntegrationsSection({
   onChanged,
-  onConnections,
   status,
 }: {
   readonly onChanged: () => void;
-  readonly onConnections: (() => void) | undefined;
   readonly status: SettingsStatus;
 }) {
   const { connectors } = status;
@@ -846,12 +843,6 @@ function IntegrationsSection({
         <div className="flex min-h-7 flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <h3 className="text-sm font-medium">Connected Services</h3>
           <span className="flex items-center gap-2">
-            {onConnections ? (
-              <Button onClick={onConnections} size="xs" variant="outline">
-                <PlugIcon className="size-3" />
-                Your Connections
-              </Button>
-            ) : null}
             <Button onClick={onChanged} size="xs" variant="ghost">
               <RefreshCwIcon className="size-3" />
               Refresh
@@ -1224,7 +1215,6 @@ const SECTIONS = [
  * callbacks; Settings closes first.
  */
 export function SettingsDialog({
-  onConnections,
   onEdit,
   onOpenChange,
   onPendingChanges,
@@ -1232,8 +1222,6 @@ export function SettingsDialog({
   open,
   pendingCount,
 }: {
-  /** Opens Connections; absent when no connector is set up. */
-  readonly onConnections?: (() => void) | undefined;
   /** Opens a member's Edit; absent where changes aren't possible. */
   readonly onEdit?: ((memberId: string) => void) | undefined;
   readonly onOpenChange: (open: boolean) => void;
@@ -1311,7 +1299,6 @@ export function SettingsDialog({
                 "integrations",
                 <IntegrationsSection
                   onChanged={reload}
-                  onConnections={then(onConnections)}
                   status={loaded.status}
                 />
               )}

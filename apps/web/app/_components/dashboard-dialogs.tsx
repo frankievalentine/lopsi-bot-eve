@@ -96,7 +96,6 @@ export function useDashboardDialogs({
     <>
       {settingsOpened ? (
         <SettingsDialog
-          onConnections={actions.openConnections}
           onEdit={actions.openEdit}
           onOpenChange={setSettingsOpen}
           onPendingChanges={actions.openPendingChanges}
