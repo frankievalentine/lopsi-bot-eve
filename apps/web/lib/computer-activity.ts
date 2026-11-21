@@ -1,6 +1,6 @@
 /**
  * What a chat's sandbox did, from eve's call observations: the shell commands
- * it ran and the files it wrote or read. eve has no API that lists a sandbox's
+ * it ran and the files it wrote, edited or read. eve has no API that lists a sandbox's
  * files; in production mode a snapshot taken after each turn
  * (workspace-store.ts) adds the files the shell made on its own.
  *
@@ -27,12 +27,13 @@ export interface CommandRun {
   readonly truncated: boolean;
 }
 
-/** A file the agent wrote or read, with the latest content the chat saw. */
+/** A file the agent wrote, edited or read, with the latest content the chat saw. */
 export interface FileEntry {
   readonly at?: string;
+  /** Absent for an edit whose result the chat can't rebuild (see `edited`). */
   readonly content?: string;
-  /** Written or read in this chat, or only seen in the workspace snapshot. */
-  readonly how: "read" | "written" | "in workspace";
+  /** Written, edited or read in this chat, or only seen in the workspace snapshot. */
+  readonly how: "read" | "written" | "edited" | "in workspace";
   /** Only part of the file was read. */
   readonly partial: boolean;
   /** Relative to the workspace. */
@@ -52,8 +53,9 @@ export interface ComputerActivity {
 
 type Json = Record<string, unknown>;
 
-const WORKSPACE = /^\/workspace\/?/u;
+const WORKSPACE = /^(?:\/workspace\/?|\.\/)/u;
 const LINE_NUMBER = /^\d+: /u;
+const FILE_TOOLS = new Set(["edit_file", "read_file", "write_file"]);
 
 function objectOf(value: unknown): Json {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -101,7 +103,45 @@ function withoutLineNumbers(content: string): string {
     .join("\n");
 }
 
-function fileOf(call: CallObservation): FileEntry | undefined {
+/**
+ * edit_file's replacements applied to the text the chat last saw, when each
+ * `oldText` occurs exactly once in it and none overlap. eve also matches
+ * loosely (trailing whitespace, smart quotes); this doesn't, so such an edit
+ * leaves the content to the workspace snapshot.
+ */
+function edited(before: string, edits: unknown): string | undefined {
+  if (!Array.isArray(edits)) {
+    return;
+  }
+  const spans: { end: number; start: number; text: string }[] = [];
+  for (const edit of edits) {
+    const { newText, oldText } = objectOf(edit);
+    if (typeof oldText !== "string" || typeof newText !== "string") {
+      return;
+    }
+    const start = before.indexOf(oldText);
+    if (oldText === "" || start === -1 || before.includes(oldText, start + 1)) {
+      return;
+    }
+    spans.push({ end: start + oldText.length, start, text: newText });
+  }
+  spans.sort((a, b) => a.start - b.start);
+  let after = "";
+  let at = 0;
+  for (const span of spans) {
+    if (span.start < at) {
+      return;
+    }
+    after += before.slice(at, span.start) + span.text;
+    at = span.end;
+  }
+  return after + before.slice(at);
+}
+
+function fileOf(
+  call: CallObservation,
+  seen: ReadonlyMap<string, FileEntry>
+): FileEntry | undefined {
   if (call.state !== "completed") {
     return;
   }
@@ -113,6 +153,21 @@ function fileOf(call: CallObservation): FileEntry | undefined {
   }
   const at = call.endedAt ?? call.startedAt;
   const timing = at === undefined ? {} : { at };
+  if (call.name === "edit_file") {
+    const before = seen.get(path);
+    const content =
+      before?.content === undefined || before.partial
+        ? undefined
+        : edited(before.content, input.edits);
+    return {
+      how: "edited",
+      partial: false,
+      path,
+      stored: false,
+      ...timing,
+      ...(content === undefined ? {} : { content }),
+    };
+  }
   if (call.name === "write_file") {
     const content = stringOf(input.content);
     return {
@@ -144,8 +199,8 @@ export function computerActivity(
   for (const call of calls) {
     if (call.name === "bash") {
       commands.push(commandOf(call));
-    } else if (call.name === "write_file" || call.name === "read_file") {
-      const file = fileOf(call);
+    } else if (FILE_TOOLS.has(call.name)) {
+      const file = fileOf(call, files);
       if (file) {
         // A later call replaces what an earlier one saw.
         files.delete(file.path);

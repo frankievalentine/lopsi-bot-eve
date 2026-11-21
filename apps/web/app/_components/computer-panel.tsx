@@ -172,6 +172,9 @@ function FileView({ file }: { readonly file: FileEntry }) {
   if (file.stored || file.skipped === "large") {
     return <Note>This file is too large to show here.</Note>;
   }
+  if (file.content === undefined && file.how === "edited") {
+    return <Note>The agent edited this file; its text isn't shown here.</Note>;
+  }
   return (
     <div className="space-y-1.5">
       {file.partial ? <Note>Only part of this file was read.</Note> : null}
@@ -222,7 +225,7 @@ function FilesTab({
       {takenAt === undefined ? (
         <Note>
           Files the shell made on its own don't show here, only ones the agent
-          wrote or read.
+          wrote, edited or read.
         </Note>
       ) : (
         <Note>{`Workspace as of ${formatWhen(takenAt)}.`}</Note>
@@ -231,7 +234,7 @@ function FilesTab({
   );
 }
 
-/** The chat's sandbox: the commands it ran, and the files it wrote or read. */
+/** The chat's sandbox: the commands it ran, and the files it wrote, edited or read. */
 function ComputerPanel({
   activity,
   className,
