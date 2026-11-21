@@ -28,7 +28,7 @@ Settings lists these for your deployment when it's done. Deleting the project in
 | GitHub repository | The Deploy button | GitHub: the repository's settings |
 | GitHub App | The Deploy button | GitHub: [Applications](https://github.com/settings/installations) |
 | Vercel App for sign-in | `pnpm setup:sign-in` | Vercel: team settings, Apps |
-| Upstash for Redis store | `pnpm setup:email` | Vercel: Storage |
-| Resend webhooks, API key, receiving domain | `pnpm setup:email` | [Resend](https://resend.com) |
+| Upstash for Redis store | The Deploy button | Vercel: Storage |
+| Resend API key, receiving domain | You, for email | [Resend](https://resend.com) |
 
-Upstash can keep billing on a paid plan, and Resend's webhooks keep firing at the old address until you remove them.
+Upstash can keep billing on a paid plan.

@@ -1,12 +1,14 @@
 import { createResendAdapter } from "@resend/chat-sdk-adapter";
+import { getToken } from "@vercel/connect";
+import { createConnectWebhookVerifier } from "@vercel/connect/chat";
 import type { Message } from "chat";
 import { chatSdkChannel } from "eve/channels/chat-sdk";
-import { webhookSecretVariable } from "../../../../apps/web/lib/channel-core.mjs";
+import { allowedSenders } from "../../../../apps/web/lib/allowed-senders.js";
 import {
-  buildAdapter,
   channelState,
   guardChannel,
 } from "../../../../apps/web/lib/channel-guard.js";
+import { emailConnector } from "../../../../apps/web/lib/connectors.js";
 import {
   bareAddress,
   emailSetup,
@@ -21,24 +23,28 @@ const MEMBER_ID = "lopsi";
 
 const setup = emailSetup(MEMBER_ID);
 const name = crew.name ?? MEMBER_ID;
-const SECRET = webhookSecretVariable(MEMBER_ID);
 
 /**
- * Email for this crew member, at `<member>@LOPSI_EMAIL_DOMAIN`, through Resend
- * (apps/web/lib/email.ts, `pnpm setup:email`). Its webhook is
- * `/eve/<member>/v1/resend`. Until email is set up, its adapter gets
- * placeholders (buildAdapter), so every webhook fails Resend's signature check.
+ * Email for this crew member, at `<member>@LOPSI_EMAIL_DOMAIN`, through the
+ * Resend connector Settings turned email on with (apps/web/lib/email.ts).
+ * Connect checks Resend's signature and forwards each email to app/api/email,
+ * which hands it here (`/eve/<member>/v1/resend`) with the deployment's OIDC
+ * token, so this deployment holds no Resend key or webhook secret.
  */
 const { bot, channel, send } = chatSdkChannel({
   adapters: {
-    resend: buildAdapter(setup !== undefined, ["RESEND_API_KEY", SECRET], () =>
-      createResendAdapter({
-        apiKey: process.env.RESEND_API_KEY ?? "",
-        fromAddress: setup?.address ?? `${MEMBER_ID}@unconfigured.invalid`,
-        fromName: name,
-        webhookSecret: process.env[SECRET] ?? "",
-      })
-    ),
+    resend: createResendAdapter({
+      apiKey: async () => {
+        const connector = await emailConnector();
+        if (connector === undefined) {
+          throw new Error("No Resend connector receives the crew's email.");
+        }
+        return await getToken(connector.id, { subject: { type: "app" } });
+      },
+      fromAddress: setup?.address ?? `${MEMBER_ID}@unconfigured.invalid`,
+      fromName: name,
+      webhookVerifier: createConnectWebhookVerifier(),
+    }),
   },
   // A message arriving mid-reply joins the running turn.
   concurrency: "concurrent",
@@ -52,7 +58,7 @@ const { bot, channel, send } = chatSdkChannel({
  * Mail to this member, from an allowed sender, whose domain vouches for it
  * (DMARC).
  */
-function accept(message: Message) {
+async function accept(message: Message) {
   const raw = message.raw as {
     cc?: string[];
     headers?: Record<string, string>;
@@ -60,7 +66,7 @@ function accept(message: Message) {
   };
   const sender = message.author.userId;
   const recipients = [...(raw.to ?? []), ...(raw.cc ?? [])].map(bareAddress);
-  const allowed = isAllowedSender(sender);
+  const allowed = isAllowedSender(sender, await allowedSenders("email"));
   const dmarc = passesDmarc(raw.headers, sender);
   return {
     ok:

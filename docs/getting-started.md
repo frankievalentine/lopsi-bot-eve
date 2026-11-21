@@ -9,7 +9,7 @@ Click **Deploy** in the [README](../README.md#deploy). Vercel clones this reposi
 - **`LOPSI_ACCESS_PASSWORD`**: the password your visitors enter ([starter mode](access.md#starter-mode)). Use at least 16 characters, for example from `openssl rand -base64 32`.
 - **`VERCEL_TOKEN`**: a [Vercel token](https://vercel.com/account/tokens) for the team, with an expiry, so Lopsi can see the services you add in Vercel Connect ([why](integrations.md#let-lopsi-see-your-connectors)). Only the server reads it.
 - **A GitHub App connector**: install the app on your new repository, with read and write access to contents and pull requests, so the dashboard can open pull requests.
-- **A private Blob store**, for what Lopsi keeps between chats.
+- **A private Blob store**, for what Lopsi keeps between chats, and **Upstash for Redis**, for email threads.
 
 When the deployment is ready, open it, enter the password, and chat with Lopsi.
 
@@ -49,9 +49,7 @@ Open Settings → **Integrations** → **Add in Vercel**. On the project's Conne
 | --- | --- | --- |
 | Give the crew any service | Add its connector in Vercel Connect | [Services](integrations.md#services) |
 | Chat with Lopsi in Slack or Telegram | Add the connector, then **Turn On** in Settings | [Chat in Slack or Telegram](integrations.md#chat-in-slack-or-telegram) |
-| Let people email the crew | `pnpm setup:email`, from your clone | [Email](integrations.md#email) |
-
-Email adds [Upstash for Redis](../README.md#what-it-runs-on) the first time; the setup asks before it does.
+| Let people email the crew | Add a Resend connector, then **Turn On** on its card | [Email](integrations.md#email) |
 
 ## 6. Check it
 

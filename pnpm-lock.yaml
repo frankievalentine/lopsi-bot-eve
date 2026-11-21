@@ -193,8 +193,8 @@ importers:
         specifier: ^1.3.0
         version: 1.3.0(@types/react@19.2.15)(react@19.2.6)
       '@resend/chat-sdk-adapter':
-        specifier: ^0.5.0
-        version: 0.5.0(@chat-adapter/shared@4.44.0(ai@7.0.178(zod@4.6.7))(zod@4.6.7))(@react-email/render@2.2.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(chat@4.43.0(ai@7.0.178(zod@4.6.7))(zod@4.6.7))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+        specifier: 0.6.1
+        version: 0.6.1(@chat-adapter/shared@4.44.0(ai@7.0.178(zod@4.6.7))(zod@4.6.7))(@react-email/render@2.2.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(chat@4.43.0(ai@7.0.178(zod@4.6.7))(zod@4.6.7))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@streamdown/cjk':
         specifier: ^1.0.4
         version: 1.0.4(@types/mdast@4.0.4)(micromark-util-types@2.0.3)(micromark@4.0.3)(react@19.2.6)(unified@11.0.5)
@@ -1892,8 +1892,8 @@ packages:
     peerDependencies:
       '@redis/client': ^5.12.1
 
-  '@resend/chat-sdk-adapter@0.5.0':
-    resolution: {integrity: sha512-etPtbaFCco8qgZiZWRMIscKPubkJfts1ec/lo466fW1ENfpvbUxtXjptHIeCvXlKTBtlF/ZrifpjIti+YJDN5Q==}
+  '@resend/chat-sdk-adapter@0.6.1':
+    resolution: {integrity: sha512-XbVTw6b4BPCFNTC1lm8QwnQ1o1BXZqCE7P2oca4+J8R/3v56g1bt/3qoBOd2Igv4iRsVku3oslILk3BLIqZ1eg==}
     engines: {node: '>=20'}
     peerDependencies:
       '@chat-adapter/shared': ^4.15.0
@@ -6465,7 +6465,7 @@ snapshots:
     dependencies:
       '@redis/client': 5.12.1(@opentelemetry/api@1.10.0)
 
-  '@resend/chat-sdk-adapter@0.5.0(@chat-adapter/shared@4.44.0(ai@7.0.178(zod@4.6.7))(zod@4.6.7))(@react-email/render@2.2.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(chat@4.43.0(ai@7.0.178(zod@4.6.7))(zod@4.6.7))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
+  '@resend/chat-sdk-adapter@0.6.1(@chat-adapter/shared@4.44.0(ai@7.0.178(zod@4.6.7))(zod@4.6.7))(@react-email/render@2.2.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(chat@4.43.0(ai@7.0.178(zod@4.6.7))(zod@4.6.7))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
     dependencies:
       '@chat-adapter/shared': 4.44.0(ai@7.0.178(zod@4.6.7))(zod@4.6.7)
       chat: 4.43.0(ai@7.0.178(zod@4.6.7))(zod@4.6.7)

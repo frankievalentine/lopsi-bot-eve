@@ -96,11 +96,11 @@ function manualSteps(
       href: storage,
       label: "Delete the Store",
     })),
-    ...(process.env.RESEND_API_KEY
+    ...(process.env.LOPSI_EMAIL_DOMAIN
       ? [
           {
-            hint: "Webhooks and API key, and the receiving domain if nothing else uses it",
-            href: "https://resend.com/webhooks",
+            hint: "Its API key, and the receiving domain if nothing else uses it",
+            href: "https://resend.com/api-keys",
             label: "Clean Up Resend",
           },
         ]

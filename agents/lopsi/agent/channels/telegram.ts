@@ -1,13 +1,12 @@
 import { getToken } from "@vercel/connect";
 import { createConnectWebhookVerifier } from "@vercel/connect/chat";
 import { defaultTelegramAuth, telegramChannel } from "eve/channels/telegram";
+import { allowedSenders } from "../../../../apps/web/lib/allowed-senders.js";
 import { chatConnector } from "../../../../apps/web/lib/connectors.js";
 
 // This crew member's id. The dashboard's New crew member rewrites this line
 // when it copies the channel; copy it by hand the same way.
 const MEMBER_ID = "lopsi";
-
-const LEADING_AT = /^@/u;
 
 /**
  * Telegram, through a Telegram connector attached to this project in Vercel Connect.
@@ -17,8 +16,8 @@ const LEADING_AT = /^@/u;
  * deployment holds no bot token. The connector is found when a message
  * comes in, so one attached later works without a redeploy.
  *
- * Anyone can message a bot, so only private chats from the people on
- * LOPSI_TELEGRAM_SENDERS (usernames or user ids, comma-separated) reach the
+ * Anyone can message a bot, so only private chats from the people Settings
+ * allows (usernames or user ids, apps/web/lib/allowed-senders.ts) reach the
  * agent. Anything else is dropped without a reply; the log names the sender,
  * to add them.
  */
@@ -30,12 +29,12 @@ export default telegramChannel({
       }),
     webhookVerifier: createConnectWebhookVerifier(),
   },
-  onMessage(_ctx, message) {
+  async onMessage(_ctx, message) {
     const { from } = message;
-    const allowed = (process.env.LOPSI_TELEGRAM_SENDERS ?? "")
-      .split(",")
-      .map((entry) => entry.trim().replace(LEADING_AT, "").toLowerCase())
-      .filter(Boolean);
+    const allowed =
+      message.chat.type === "private" && from !== undefined
+        ? await allowedSenders("telegram")
+        : [];
     const ok =
       message.chat.type === "private" &&
       from !== undefined &&

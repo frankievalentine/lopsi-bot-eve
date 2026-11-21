@@ -20,9 +20,11 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AccessMode } from "@/lib/access";
 import type { MemberSetup, MemberSetupResult } from "@/lib/agent-info";
+import type { SenderList } from "@/lib/allowed-senders";
 import type { ConnectorsUnavailable } from "@/lib/connectors";
 import { CREW, type CrewMember } from "@/lib/crew";
 import { cn } from "@/lib/utils";
@@ -32,6 +34,8 @@ import {
   type Integration,
   loadSettings,
   type SettingsStatus,
+  saveAllowedSenders,
+  turnOnEmail,
 } from "./settings-actions";
 
 const ACCESS: Record<
@@ -301,23 +305,83 @@ function PullRequestsRow({
   );
 }
 
+/** What the status card says when Lopsi can't list connectors, and whether a new token fixes it. */
 const UNAVAILABLE: Record<
   ConnectorsUnavailable,
-  { readonly hint: string; readonly label: string }
+  { readonly hint: string; readonly token: boolean }
 > = {
   "no-project": {
-    hint: "Locally, run `vercel link` and `vercel env pull` so Lopsi knows its project.",
-    label: "Lopsi can't tell which Vercel project it is",
+    hint: "Run `vercel link` and `vercel env pull` to connect locally.",
+    token: false,
   },
   "no-token": {
-    hint: "Create a Vercel token for this team and add it to the project as VERCEL_TOKEN (Sensitive), then redeploy. Only the server reads it.",
-    label: "Lopsi can't see your connectors yet",
+    hint: "Create a Vercel token to see your connectors.",
+    token: true,
   },
   refused: {
-    hint: "VERCEL_TOKEN may have expired, or not reach this project's team. Replace it, then redeploy.",
-    label: "Vercel refused VERCEL_TOKEN",
+    hint: "The token expired or can't reach this team. Create a new one.",
+    token: true,
   },
 };
+
+function LinkButton({
+  children,
+  href,
+  variant = "outline",
+}: {
+  readonly children: ReactNode;
+  readonly href: string;
+  readonly variant?: "default" | "outline";
+}) {
+  return (
+    <Button
+      render={<a href={href} rel="noreferrer" target="_blank" />}
+      size="xs"
+      variant={variant}
+    >
+      {children}
+      <ExternalLinkIcon aria-hidden="true" className="size-3" />
+    </Button>
+  );
+}
+
+/** Whether Lopsi can see the project's Vercel Connect connectors, and how to fix it when it can't. */
+function ConnectStatus({
+  connectors,
+}: {
+  readonly connectors: SettingsStatus["connectors"];
+}) {
+  const problem = connectors.ok ? undefined : UNAVAILABLE[connectors.reason];
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border px-3.5 py-3">
+      <span
+        aria-hidden="true"
+        className={cn(
+          "size-2 shrink-0 rounded-full",
+          problem ? "bg-destructive" : "bg-online"
+        )}
+      />
+      <div className="min-w-40 flex-1">
+        <p className="text-sm font-medium">
+          {problem ? "Not Connected" : "Connected"}
+        </p>
+        <p className="text-muted-foreground text-xs text-pretty">
+          {problem
+            ? problem.hint
+            : "Services attached to this project in Vercel show up below."}
+        </p>
+      </div>
+      {problem?.token ? (
+        <div className="flex shrink-0 gap-2">
+          <LinkButton href={TOKENS_LINK} variant="default">
+            Create Token
+          </LinkButton>
+          <LinkButton href={ENV_LINK}>Set Token</LinkButton>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function ServiceIcon({ integration }: { readonly integration: Integration }) {
   return integration.icon ? (
@@ -346,9 +410,11 @@ const CHAT_NAMES = { slack: "Slack", telegram: "Telegram" } as const;
 function ChatRows({
   integration,
   onChanged,
+  senders,
 }: {
   readonly integration: Integration;
   readonly onChanged: () => void;
+  readonly senders: SettingsStatus["senders"];
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -395,9 +461,11 @@ function ChatRows({
         </div>
       ))}
       {chat.service === "telegram" ? (
-        <p className="text-muted-foreground text-xs text-pretty">
-          Only people on LOPSI_TELEGRAM_SENDERS (usernames or ids) get answers.
-        </p>
+        <SendersEditor
+          list="telegram"
+          onChanged={onChanged}
+          senders={senders}
+        />
       ) : null}
       {error ? (
         <p className="text-destructive text-xs" role="alert">
@@ -461,12 +529,256 @@ function DomainRows({
   );
 }
 
-function IntegrationCard({
+const SENDER_LISTS = {
+  email: {
+    empty: "Nobody yet: email from anyone is dropped.",
+    label: "Who may email the crew",
+    placeholder: "ana@example.com or @example.com",
+  },
+  telegram: {
+    empty: "Nobody yet: messages from anyone are dropped.",
+    label: "Who may message the bot",
+    placeholder: "Username or user id",
+  },
+} as const;
+
+/** Who may write to the crew from outside the dashboard, edited in place. */
+function SendersEditor({
+  list,
+  onChanged,
+  senders,
+}: {
+  readonly list: SenderList;
+  readonly onChanged: () => void;
+  readonly senders: SettingsStatus["senders"];
+}) {
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { fixed, saved } = senders[list];
+  const copy = SENDER_LISTS[list];
+  const save = (entries: readonly string[], after?: () => void) => {
+    setBusy(true);
+    setError(null);
+    saveAllowedSenders(list, entries)
+      .then((result) => {
+        if (result.ok) {
+          after?.();
+          onChanged();
+        } else {
+          setError(result.error ?? "Couldn't save.");
+        }
+      })
+      .catch(() => setError("Couldn't save."))
+      .finally(() => setBusy(false));
+  };
+  const add = () => {
+    const entries = draft
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+    if (entries.length > 0) {
+      save([...saved, ...entries], () => setDraft(""));
+    }
+  };
+  const all = [...saved, ...fixed.filter((entry) => !saved.includes(entry))];
+  return (
+    <div className="space-y-1.5 text-xs">
+      <p className="text-muted-foreground">{copy.label}</p>
+      {all.length === 0 ? (
+        <p className="text-muted-foreground text-pretty">{copy.empty}</p>
+      ) : (
+        <ul className="flex flex-wrap gap-1.5">
+          {all.map((entry) => (
+            <li
+              className="bg-muted inline-flex items-center gap-1 rounded-md py-0.5 pr-0.5 pl-2 font-mono"
+              key={entry}
+            >
+              {entry}
+              {saved.includes(entry) && senders.editable ? (
+                <Button
+                  aria-label={`Remove ${entry}`}
+                  disabled={busy}
+                  onClick={() =>
+                    save(saved.filter((existing) => existing !== entry))
+                  }
+                  size="icon-xs"
+                  variant="ghost"
+                >
+                  <XIcon className="size-3" />
+                </Button>
+              ) : null}
+              {saved.includes(entry) ? null : (
+                <span className="text-muted-foreground px-1">env</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {senders.editable ? (
+        <form
+          className="flex gap-1.5"
+          onSubmit={(event) => {
+            event.preventDefault();
+            add();
+          }}
+        >
+          <Input
+            aria-label={copy.label}
+            className="h-7 text-xs"
+            disabled={busy}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder={copy.placeholder}
+            value={draft}
+          />
+          <Button disabled={busy || !draft.trim()} size="xs" type="submit">
+            Add
+          </Button>
+        </form>
+      ) : (
+        <p className="text-muted-foreground text-pretty">
+          Editing this needs the project's Blob store.
+        </p>
+      )}
+      {error ? (
+        <p className="text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+const UPSTASH_LINK = "https://vercel.com/marketplace/upstash";
+
+/** Receiving the crew's email through a Resend connector. */
+function EmailRows({
   integration,
   onChanged,
+  status,
 }: {
   readonly integration: Integration;
   readonly onChanged: () => void;
+  readonly status: SettingsStatus;
+}) {
+  const [domain, setDomain] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { email } = integration;
+  if (email === undefined) {
+    return null;
+  }
+  const turnOn = () => {
+    setBusy(true);
+    setError(null);
+    turnOnEmail(integration.id, domain || (email.suggestions[0] ?? ""))
+      .then((result) => {
+        if (result.ok) {
+          onChanged();
+        } else {
+          setError(result.error ?? "Couldn't turn it on.");
+        }
+      })
+      .catch(() => setError("Couldn't turn it on."))
+      .finally(() => setBusy(false));
+  };
+  const addresses = Object.values(status.email);
+  let body: ReactNode;
+  if (!email.redis) {
+    body = (
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-muted-foreground text-pretty">
+          Receiving email needs Upstash for Redis, for its threads.
+        </span>
+        <LinkButton href={UPSTASH_LINK}>Add Upstash</LinkButton>
+      </div>
+    );
+  } else if (email.domain) {
+    body = (
+      <>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-muted-foreground">Receives email</span>
+          <Status active={true} />
+        </div>
+        {addresses.length > 0 ? (
+          <p className="font-mono text-pretty">{addresses.join(", ")}</p>
+        ) : null}
+      </>
+    );
+  } else if (email.pending) {
+    body = (
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-muted-foreground text-pretty">
+          Turning on: production is redeploying. Refresh in a few minutes.
+        </span>
+      </div>
+    );
+  } else {
+    body = (
+      <form
+        className="space-y-1.5"
+        onSubmit={(event) => {
+          event.preventDefault();
+          turnOn();
+        }}
+      >
+        <span className="text-muted-foreground block text-pretty">
+          Let people email the crew at {"<member>@"}your domain. Turn on
+          receiving for the domain in Resend first.
+        </span>
+        <div className="flex gap-1.5">
+          <Input
+            aria-label="Domain to receive email at"
+            className="h-7 text-xs"
+            disabled={busy}
+            list={`domains-${integration.id}`}
+            onChange={(event) => setDomain(event.target.value)}
+            placeholder={email.suggestions[0] ?? "mail.example.com"}
+            value={domain}
+          />
+          <datalist id={`domains-${integration.id}`}>
+            {email.suggestions.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
+          <Button
+            disabled={busy || !(domain || email.suggestions[0])}
+            size="xs"
+            type="submit"
+          >
+            {busy ? "Turning On…" : "Turn On"}
+          </Button>
+        </div>
+      </form>
+    );
+  }
+  return (
+    <div className="space-y-2 border-t pt-2 text-xs">
+      {body}
+      {email.domain || email.pending ? (
+        <SendersEditor
+          list="email"
+          onChanged={onChanged}
+          senders={status.senders}
+        />
+      ) : null}
+      {error ? (
+        <p className="text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function IntegrationCard({
+  integration,
+  onChanged,
+  status,
+}: {
+  readonly integration: Integration;
+  readonly onChanged: () => void;
+  readonly status: SettingsStatus;
 }) {
   const { kind, perPerson, serviceName, title } = integration;
   return (
@@ -486,7 +798,16 @@ function IntegrationCard({
           </span>
         </span>
       </div>
-      <ChatRows integration={integration} onChanged={onChanged} />
+      <ChatRows
+        integration={integration}
+        onChanged={onChanged}
+        senders={status.senders}
+      />
+      <EmailRows
+        integration={integration}
+        onChanged={onChanged}
+        status={status}
+      />
       <DomainRows integration={integration} onChanged={onChanged} />
     </div>
   );
@@ -525,36 +846,12 @@ function IntegrationsSection({
               <RefreshCwIcon className="size-3" />
               Refresh
             </Button>
-            <Button
-              render={
-                <a
-                  href={PROJECT_CONNECT_LINK}
-                  rel="noreferrer"
-                  target="_blank"
-                />
-              }
-              size="xs"
-            >
+            <LinkButton href={PROJECT_CONNECT_LINK} variant="default">
               Add in Vercel
-              <ExternalLinkIcon aria-hidden="true" className="size-3" />
-            </Button>
+            </LinkButton>
           </span>
         </div>
-        {connectors.ok ? null : (
-          <Group>
-            <Row
-              hint={UNAVAILABLE[connectors.reason].hint}
-              label={UNAVAILABLE[connectors.reason].label}
-            >
-              {connectors.reason === "no-project" ? null : (
-                <>
-                  <External href={TOKENS_LINK}>Create Token</External>
-                  <External href={ENV_LINK}>Environment Variables</External>
-                </>
-              )}
-            </Row>
-          </Group>
-        )}
+        <ConnectStatus connectors={connectors} />
         {connectors.ok && connectors.list.length === 0 ? (
           <Group>
             <Row
@@ -570,20 +867,23 @@ function IntegrationsSection({
                 integration={integration}
                 key={integration.id}
                 onChanged={onChanged}
+                status={status}
               />
             ))}
           </div>
         ) : null}
       </section>
-      <Group title="Email">
-        <Row
-          hint="People email the crew at its own address, through Resend."
-          label="Resend"
-        >
-          <Status active={Object.keys(status.email).length > 0} />
-          <External href={`${GUIDE}/integrations.md#email`}>Guide</External>
-        </Row>
-      </Group>
+      {connectors.ok &&
+      !connectors.list.some((integration) => integration.email) ? (
+        <Group title="Email">
+          <Row
+            hint="Add a Resend connector in Vercel (an API key with full access), then turn on email on its card."
+            label="Let people email the crew"
+          >
+            <External href={`${GUIDE}/integrations.md#email`}>Guide</External>
+          </Row>
+        </Group>
+      ) : null}
     </>
   );
 }

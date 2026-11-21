@@ -1,12 +1,12 @@
 # Integrations
 
-The crew reaches other services through [Vercel Connect](https://vercel.com/docs/connect), whatever the service: you add it in Vercel, and Lopsi picks it up. Nothing in this repository names a service, and there's nothing to run or redeploy.
+The crew reaches other services through [Vercel Connect](https://vercel.com/docs/connect), whatever the service: you add it in Vercel, and Lopsi picks it up. Nothing in this repository names a service, and there's nothing to run.
 
 | Integration | What it gives the crew | Set up in |
 | --- | --- | --- |
 | [Services](#services) | Any of Vercel Connect's services: Slack, Google, Stripe, Linear, Notion, GitHub, Sentry, and the rest | Vercel Connect |
 | [Chat in Slack or Telegram](#chat-in-slack-or-telegram) | People talk to a crew member there, as well as in the dashboard | Vercel Connect, then Settings |
-| [Email](#email) | An address per crew member that people can write to | `pnpm setup:email` |
+| [Email](#email) | An address per crew member that people can write to | Vercel Connect, then Settings |
 
 ## Let Lopsi see your connectors
 
@@ -40,21 +40,22 @@ The dashboard opens pull requests through a GitHub connector: the one the Deploy
 Besides the dashboard, people can talk to Lopsi in Slack or Telegram. Add a Slack or Telegram connector in Vercel Connect, as above. Then, in Settings → **Integrations**, click **Turn On** next to **Chat with Lopsi**. That has the connector send its messages to `/eve/lopsi/v1/slack` (or `/telegram`). Connect checks each message and forwards it, so the deployment holds no Slack or Telegram secret.
 
 - **Slack:** anyone in the workspace where the app is installed can mention or message it.
-- **Telegram:** anyone can find a bot, so only private chats from people on `LOPSI_TELEGRAM_SENDERS` (usernames or user ids, comma-separated) get an answer. Everything else is dropped without a reply, and the deployment's logs name the sender, so you can add them.
+- **Telegram:** anyone can find a bot, so only private chats from people under **Who may message the bot** on the Telegram card (usernames or user ids) get an answer. Everything else is dropped without a reply, and the deployment's logs name the sender, so you can add them.
 - The same connector also lets the crew send messages there through `call_service`, for example to post a summary to a channel, or message you when something finishes. A Telegram bot can only message people who have messaged it first.
 - Lopsi answers these channels. To have another member answer instead, move `agents/lopsi/agent/channels/slack.ts` (or `telegram.ts`) to that member and change its `MEMBER_ID`.
 
 ## Email
 
-The crew can send and receive email through [Resend](https://resend.com):
+People can email each crew member at its own address, `<member>@<domain>`, through [Resend](https://resend.com):
 
-```sh
-pnpm setup:email
-```
+1. In Resend, turn on receiving for your domain (an MX record), and create an API key with **Full access**, so Connect can manage the webhook.
+2. In Vercel Connect, add a Resend connector with that key and attach it to the project.
+3. In Settings → **Integrations**, the Resend card asks for the domain. Click **Turn On**. That sends received email to the dashboard, saves the domain, and redeploys production once. Email works when the redeploy finishes.
+4. Under **Who may email the crew**, add the addresses (`ana@example.com`) or whole domains (`@example.com`) that may write.
 
-To have the crew **send** email, add a Resend connector in Vercel Connect, like any other [service](#services). The script sets up **receiving**: it adds [Upstash for Redis](https://vercel.com/marketplace/upstash) from the Vercel Marketplace for thread state if the project has none, asks for your Resend API key (not echoed; saved as a sensitive variable), the domain to receive at, and who may write, then creates each crew member's Resend webhook. Deploy afterwards.
+Receiving needs [Upstash for Redis](https://vercel.com/marketplace/upstash) for email threads. The Deploy button adds it; otherwise the card links to it.
 
-- Each crew member answers its own address, `<member>@<domain>`. Replies stay in the email thread; approvals and questions arrive as numbered options you answer by replying.
-- Only senders on `LOPSI_EMAIL_SENDERS` (addresses, or whole domains as `@example.com`) reach the crew, and only when the receiving server reports a DMARC pass for the sender's domain, so a forged From address doesn't get through. Everything else is dropped without a reply; the deployment's logs say why. Set `LOPSI_EMAIL_AUTHSERV_ID` to the receiving server's name to trust only its results.
-- The domain needs receiving turned on in Resend (an MX record), or use your account's `<id>.resend.app` address.
-- Re-run `pnpm setup:email` after adding a crew member, to create its webhook.
+- Connect checks Resend's signature and forwards each email to `/api/email`, which hands it to the members it's addressed to. So the deployment holds no Resend key or webhook secret, and one connector serves the whole crew, including members added later.
+- Replies stay in the email thread; approvals and questions arrive as numbered options you answer by replying.
+- Only allowed senders reach the crew, and only when the receiving server reports a DMARC pass for the sender's domain, so a forged From address doesn't get through. Everything else is dropped without a reply; the deployment's logs say why. Set `LOPSI_EMAIL_AUTHSERV_ID` to the receiving server's name to trust only its results.
+- The same connector lets the crew send email through `call_service`, with approval for every send.

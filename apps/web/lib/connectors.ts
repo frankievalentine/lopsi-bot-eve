@@ -13,9 +13,7 @@
  */
 
 import type { ConnectionToolAnnotations } from "eve/tools/approval";
-import { type DeploymentTarget, deploymentTarget } from "./vercel-project";
-
-const API = "https://api.vercel.com";
+import { deploymentTarget, vercelApi } from "./vercel-project";
 
 /** How long a listing is reused, so a connector attached in Vercel shows up within this. */
 const LISTING_MS = 30_000;
@@ -54,37 +52,6 @@ export type ConnectorsUnavailable = "no-project" | "no-token" | "refused";
 export type ConnectorListing =
   | { readonly connectors: readonly Connector[]; readonly ok: true }
   | { readonly ok: false; readonly reason: ConnectorsUnavailable };
-
-/** Calls the Vercel API with `VERCEL_TOKEN`, on this deployment's team. */
-async function vercelApi(
-  target: DeploymentTarget,
-  path: string,
-  init?: { readonly body?: unknown; readonly method?: "PATCH" }
-): Promise<unknown> {
-  const token = process.env.VERCEL_TOKEN?.trim();
-  if (!token) {
-    throw new Error("VERCEL_TOKEN isn't set.");
-  }
-  const separator = path.includes("?") ? "&" : "?";
-  const response = await fetch(
-    `${API}${path}${separator}teamId=${encodeURIComponent(target.teamId)}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...(init?.body === undefined
-          ? {}
-          : { "Content-Type": "application/json" }),
-      },
-      ...(init?.method ? { method: init.method } : {}),
-      ...(init?.body === undefined ? {} : { body: JSON.stringify(init.body) }),
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`Vercel answered ${response.status} for ${path}.`);
-  }
-  const text = await response.text();
-  return text ? JSON.parse(text) : undefined;
-}
 
 interface Attachment {
   readonly connectorId: string;
@@ -261,13 +228,27 @@ export async function chatConnector(
   return connector;
 }
 
+/** Where a Resend connector sends received email: the dashboard hands each one to the member it's addressed to (app/api/email). */
+export const EMAIL_PATH = "/api/email";
+
+/** The Resend connector that receives the crew's email, once Settings has turned it on. */
+export async function emailConnector(): Promise<Connector | undefined> {
+  return (await connectors()).find(
+    (connector) =>
+      connector.service === "resend" &&
+      connector.triggers?.paths.includes(EMAIL_PATH)
+  );
+}
+
 /**
- * Has a connector send its events (messages to the bot) to a crew member's
- * channel, keeping where it already sends them for other projects.
+ * Has a connector send its events to this deployment: a Slack or Telegram
+ * connector to a crew member's chat channel, a Resend connector to the email
+ * route. Where it sends them for other projects is kept; this project's
+ * earlier path is replaced.
  */
 export async function sendEventsTo(
   connectorId: string,
-  memberId: string
+  to: { readonly memberId: string } | "email"
 ): Promise<void> {
   const target = await deploymentTarget();
   if (target === undefined) {
@@ -277,13 +258,19 @@ export async function sendEventsTo(
     target,
     `/v1/connect/connectors/${encodeURIComponent(connectorId)}`
   )) as ConnectorRecord;
-  if (!(CHAT_SERVICES as readonly string[]).includes(record.service)) {
-    throw new Error(
-      `${record.serviceName ?? record.service} has no chat channel.`
-    );
+  const service = record.serviceName ?? record.service;
+  let path: string;
+  if (to === "email") {
+    if (record.service !== "resend") {
+      throw new Error(`${service} doesn't receive email.`);
+    }
+    path = EMAIL_PATH;
+  } else {
+    if (!(CHAT_SERVICES as readonly string[]).includes(record.service)) {
+      throw new Error(`${service} has no chat channel.`);
+    }
+    path = chatPath(to.memberId, record.service as ChatService);
   }
-  const path = chatPath(memberId, record.service as ChatService);
-  // One destination per project: this one replaces the project's earlier path.
   const destinations = [
     ...(record.triggerDestinations ?? []).filter(
       (destination) => destination.projectId !== target.projectId
