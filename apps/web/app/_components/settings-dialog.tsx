@@ -876,10 +876,10 @@ function IntegrationsSection({
       </section>
       {connectors.ok &&
       !connectors.list.some((integration) => integration.email) ? (
-        <Group title="Email">
+        <Group title="Receive Email">
           <Row
-            hint="Add a Resend connector, then turn on email from its row above."
-            label="Email the Crew"
+            hint="Add a Resend connector to let people email the crew."
+            label="Resend"
           >
             <Status active={false} />
             <External href={`${GUIDE}/integrations.md#email`}>Guide</External>
