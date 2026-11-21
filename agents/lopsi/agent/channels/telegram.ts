@@ -4,8 +4,9 @@ import { defaultTelegramAuth, telegramChannel } from "eve/channels/telegram";
 import { allowedSenders } from "../../../../apps/web/lib/allowed-senders.js";
 import { chatConnector } from "../../../../apps/web/lib/connectors.js";
 
-// This crew member's id. The dashboard's New crew member rewrites this line
-// when it copies the channel; copy it by hand the same way.
+// The crew member that answers Telegram: its events arrive at /eve/<MEMBER_ID>/v1/telegram.
+// New crew members don't copy this channel; to have another member answer,
+// move this file to it and change this line.
 const MEMBER_ID = "lopsi";
 
 /**

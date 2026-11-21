@@ -1,5 +1,5 @@
 /**
- * Helpers the setup scripts share: the linked project, and Vercel API calls
+ * Helpers for setup-sign-in.mjs: the linked project, and Vercel API calls
  * made through the Vercel CLI so its login and team access apply. Request
  * bodies, which can hold secrets, go on stdin and are never printed.
  */

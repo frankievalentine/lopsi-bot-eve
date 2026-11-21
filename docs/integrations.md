@@ -1,6 +1,6 @@
 # Integrations
 
-The crew reaches other services through [Vercel Connect](https://vercel.com/docs/connect), whatever the service: you add it in Vercel, and Lopsi picks it up. Nothing in this repository names a service, and there's nothing to run.
+The crew reaches other services through [Vercel Connect](https://vercel.com/docs/connect), whatever the service: you add it in Vercel, and Lopsi picks it up. Apart from chat (Slack, Telegram), email (Resend) and pull requests (GitHub), nothing in this repository names a service, and there's nothing to run.
 
 | Integration | What it gives the crew | Set up in |
 | --- | --- | --- |
@@ -19,7 +19,7 @@ Only the server reads it: the model, the sandbox and the browser never see it. A
 
 ## Services
 
-Open Settings → **Integrations** → **Add in Vercel**. It takes you to the project's Connect page. Create a connector for any service and attach it to this project. Within a minute it's listed in Settings and the crew can use it; **Refresh** checks sooner.
+Open Settings → **Integrations** → **Add Connectors**. It takes you to the project's Connect page. Create a connector for any service and attach it to this project. Within a minute (usually 30 seconds) it's listed in Settings and the crew can use it; **Refresh** reloads the list.
 
 What the crew gets depends on the connector:
 
@@ -31,13 +31,13 @@ What the crew gets depends on the connector:
 
 Where a service supports it, each person signs in with their own account the first time the crew needs it, with a sign-in card in the chat. **Connections** in the sidebar shows which you've connected, and disconnects one. Otherwise the crew uses the connector's own credential, the same for everyone. In starter mode everyone shares one identity, and so one connection.
 
-To limit a crew member to some services, list their names in its `crew.json` `connectors` (Settings shows each name), or pick them in **Edit**.
+To limit a crew member to some services, pick them in **Edit**, or list their names in its `crew.json` `connectors`. A connector's name is its name in Vercel, lowercased with dashes: `My Linear` is `my-linear`.
 
 The dashboard opens pull requests through a GitHub connector: the one the Deploy button adds (`GITHUB_CONNECTOR`), or any GitHub connector attached to the project.
 
 ## Chat in Slack or Telegram
 
-Besides the dashboard, people can talk to Lopsi in Slack or Telegram. Add a Slack or Telegram connector in Vercel Connect, as above. Then, in Settings → **Integrations**, click **Turn On** next to **Chat with Lopsi**. That has the connector send its messages to `/eve/lopsi/v1/slack` (or `/telegram`). Connect checks each message and forwards it, so the deployment holds no Slack or Telegram secret.
+Besides the dashboard, people can talk to Lopsi in Slack or Telegram. Add a Slack or Telegram connector in Vercel Connect, as above. Then, in Settings → **Integrations**, click **Turn On** next to **Chat with Lopsi in Slack** (or Telegram). That has the connector send its messages to `/eve/lopsi/v1/slack` (or `/telegram`). Connect checks each message and forwards it, so the deployment holds no Slack or Telegram secret.
 
 - **Slack:** anyone in the workspace where the app is installed can mention or message it.
 - **Telegram:** anyone can find a bot, so only private chats from people under **Who may message the bot** on the Telegram row (usernames or user ids) get an answer. Everything else is dropped without a reply, and the deployment's logs name the sender, so you can add them.
@@ -52,6 +52,8 @@ People can email each crew member at its own address, `<member>@<domain>`, throu
 2. In Vercel Connect, add a Resend connector with that key and attach it to the project.
 3. In Settings → **Integrations**, the Resend row asks for the domain. Click **Turn On**. That sends received email to the dashboard, saves the domain, and redeploys production once. Email works when the redeploy finishes.
 4. Under **Who may email the crew**, add the addresses (`ana@example.com`) or whole domains (`@example.com`) that may write.
+
+Both allowlists, for email and for Telegram, are kept in the project's Blob store, so a change applies to the next message, and editing them needs that store. Entries in `LOPSI_EMAIL_SENDERS` or `LOPSI_TELEGRAM_SENDERS` also count; Settings shows them tagged **env**, and they can only be removed from the variable.
 
 Receiving needs [Upstash for Redis](https://vercel.com/marketplace/upstash) for email threads. The Deploy button adds it; otherwise its row links to it.
 
