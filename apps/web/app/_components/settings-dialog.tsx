@@ -765,6 +765,15 @@ function EmailRows({
   );
 }
 
+/** Whether a service has settings under its row: chat, email or approved hosts. */
+function hasDetails({ chat, domains, email }: Integration): boolean {
+  return (
+    (chat !== undefined && chat.members.length > 0) ||
+    email !== undefined ||
+    domains !== undefined
+  );
+}
+
 function IntegrationRow({
   integration,
   onChanged,
@@ -776,7 +785,7 @@ function IntegrationRow({
 }) {
   const { kind, problem, serviceName, title } = integration;
   return (
-    <li className="space-y-2.5 px-3.5 py-2.5">
+    <li className="px-3.5 py-3">
       <div className="flex items-center gap-3">
         <ServiceIcon integration={integration} />
         <span className="min-w-0 flex-1">
@@ -802,19 +811,21 @@ function IntegrationRow({
           {problem ?? "Connected"}
         </span>
       </div>
-      <div className="space-y-2.5 empty:hidden sm:pl-11">
-        <ChatRows
-          integration={integration}
-          onChanged={onChanged}
-          senders={status.senders}
-        />
-        <EmailRows
-          integration={integration}
-          onChanged={onChanged}
-          status={status}
-        />
-        <DomainRows integration={integration} onChanged={onChanged} />
-      </div>
+      {hasDetails(integration) ? (
+        <div className="mt-3 space-y-3 sm:pl-11">
+          <ChatRows
+            integration={integration}
+            onChanged={onChanged}
+            senders={status.senders}
+          />
+          <EmailRows
+            integration={integration}
+            onChanged={onChanged}
+            status={status}
+          />
+          <DomainRows integration={integration} onChanged={onChanged} />
+        </div>
+      ) : null}
     </li>
   );
 }
@@ -874,14 +885,18 @@ function IntegrationsSection({
       </section>
       {connectors.ok &&
       !connectors.list.some((integration) => integration.email) ? (
-        <Group title="Email">
-          <Row
-            hint="Add a Resend connector in Vercel (an API key with full access), then turn on email on its row."
-            label="Let people email the crew"
+        <p className="text-muted-foreground text-xs text-pretty">
+          To let people email the crew, add a Resend connector (an API key with
+          full access) and turn on email on its row.{" "}
+          <a
+            className="text-foreground underline-offset-4 hover:underline"
+            href={`${GUIDE}/integrations.md#email`}
+            rel="noreferrer"
+            target="_blank"
           >
-            <External href={`${GUIDE}/integrations.md#email`}>Guide</External>
-          </Row>
-        </Group>
+            Guide
+          </a>
+        </p>
       ) : null}
     </>
   );
