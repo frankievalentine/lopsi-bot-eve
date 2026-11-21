@@ -30,29 +30,16 @@ import {
   readMemberAccess,
   writeMemberAccess,
 } from "./member-access";
+// What a new member copies is what template updates keep in step, so both
+// read it from one place.
+import {
+  GENERATED,
+  rewriteMemberId,
+  TEMPLATE_MEMBER,
+  TEMPLATE_PATHS,
+} from "./template-update.mjs";
 
 type CrewData = ReturnType<typeof CrewSchema.parse>;
-
-const GENERATED = "apps/web/lib/crew.generated.ts";
-/** The crew member new ones are copied from (see TEMPLATE_PATHS). */
-const TEMPLATE_MEMBER = "lopsi";
-/**
- * What a new member copies from the template member: its web and email
- * channels (access modes, the chat owner check), connections, hooks (the chat list), memory, and hardening
- * (session budget, sandbox network policy, web_fetch approval).
- */
-const TEMPLATE_PATHS = [
-  // Only the channels every member has; a provider channel (Slack, Telegram)
-  // belongs to the one member set up to answer it.
-  "agent/channels/eve.ts",
-  "agent/channels/resend.ts",
-  "agent/connections/",
-  "agent/hooks/",
-  "agent/tools/",
-  "agent/limits.ts",
-  "agent/memory.ts",
-  "agent/sandbox.ts",
-];
 
 const MEMBER_FILE = /^agents\/(?<id>[^/]+)\/agent\//u;
 
@@ -281,21 +268,19 @@ async function changedOnly(
   );
 }
 
-/** The line a channel that needs its member's id (channels/resend.ts) declares it on. */
-const MEMBER_ID_LINE = `const MEMBER_ID = "${TEMPLATE_MEMBER}";`;
-
 /**
  * A template file for the new member: a channel that declares its member's id
  * gets the new one. A channel that should but doesn't is refused, so a copy
  * never answers as the template member.
  */
 function withMemberId(path: string, content: string, id: string): string {
-  if (content.includes(MEMBER_ID_LINE)) {
-    return content.replace(MEMBER_ID_LINE, `const MEMBER_ID = "${id}";`);
+  const rewritten = rewriteMemberId(content, id);
+  if (rewritten !== undefined) {
+    return rewritten;
   }
   if (path.endsWith("/channels/resend.ts")) {
     throw new ConfigConflictError(
-      `${path} no longer declares ${MEMBER_ID_LINE}, so it can't be copied for ${id}.`
+      `${path} no longer declares const MEMBER_ID = "${TEMPLATE_MEMBER}";, so it can't be copied for ${id}.`
     );
   }
   return content;

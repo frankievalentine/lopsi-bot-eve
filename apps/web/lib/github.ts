@@ -17,6 +17,30 @@ import { connectors } from "./connectors";
 
 const API = "https://api.github.com";
 const MENTIONS_DRAFT = /draft/iu;
+/** Blobs uploaded at once when a change has many files. */
+const BLOB_UPLOADS = 8;
+
+/** `fn` over `items`, at most `limit` at a time, in order. */
+export async function mapLimit<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const index = next;
+      next += 1;
+      // biome-ignore lint/performance/noAwaitInLoops: each worker takes the next item when it's done, to stay within the limit.
+      results[index] = await fn(items[index] as T);
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, worker)
+  );
+  return results;
+}
 /** Every branch the dashboard opens starts with this, which is also how it finds its pull requests. */
 export const BRANCH_PREFIX = "lopsi/";
 
@@ -74,21 +98,28 @@ export class GitHubError extends Error {
   }
 }
 
-/** A REST call with the GitHub App's installation token. */
+/**
+ * A REST call with the GitHub App's installation token, or with none for
+ * `anonymous` reads of a public repository.
+ */
 async function github<T>(
   path: string,
-  init: { body?: unknown; method?: string } = {}
+  init: { anonymous?: boolean; body?: unknown; method?: string } = {}
 ): Promise<T> {
-  const connector = await githubConnector();
-  if (!connector) {
-    throw new GitHubError("GitHub isn't set up.", 503);
+  let authorization: Record<string, string> = {};
+  if (!init.anonymous) {
+    const connector = await githubConnector();
+    if (!connector) {
+      throw new GitHubError("GitHub isn't set up.", 503);
+    }
+    const token = await getToken(connector, { subject: { type: "app" } });
+    authorization = { authorization: `Bearer ${token}` };
   }
-  const token = await getToken(connector, { subject: { type: "app" } });
   const response = await fetch(`${API}${path}`, {
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
     headers: {
       accept: "application/vnd.github+json",
-      authorization: `Bearer ${token}`,
+      ...authorization,
       ...(init.body === undefined
         ? {}
         : { "content-type": "application/json" }),
@@ -108,7 +139,7 @@ async function github<T>(
   return (await response.json()) as T;
 }
 
-const repoPath = ({ owner, repo }: Repository) =>
+const repoPath = ({ owner, repo }: Pick<Repository, "owner" | "repo">) =>
   `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
 
 /** The commit the target branch points at now, and its tree. */
@@ -167,6 +198,77 @@ export async function snapshotOf(target: Repository): Promise<BranchSnapshot> {
   };
 }
 
+interface GitTree {
+  tree: { mode: string; path: string; sha: string; type: string }[];
+  truncated: boolean;
+}
+
+/** A file in a Git tree: its content hash and mode. */
+export interface TreeEntry {
+  readonly mode: string;
+  readonly sha: string;
+}
+
+/** A repository, without the branch. */
+export type RepositoryName = Pick<Repository, "owner" | "repo">;
+
+/**
+ * Every file at `ref` (a branch, tag or commit), by path. Tries the
+ * installation token first and, for a public repository it doesn't cover,
+ * reads without one.
+ */
+export async function treeAt(
+  repository: RepositoryName,
+  ref: string
+): Promise<ReadonlyMap<string, TreeEntry>> {
+  const path = `${repoPath(repository)}/git/trees/${encodeURIComponent(ref)}?recursive=1`;
+  let tree: GitTree;
+  try {
+    tree = await github<GitTree>(path);
+  } catch (error) {
+    if (
+      !(error instanceof GitHubError && [401, 403, 404].includes(error.status))
+    ) {
+      throw error;
+    }
+    tree = await github<GitTree>(path, { anonymous: true });
+  }
+  if (tree.truncated) {
+    throw new GitHubError(
+      "The repository is too large to read in one request.",
+      413
+    );
+  }
+  return new Map(
+    tree.tree
+      .filter((entry) => entry.type === "blob")
+      .map((entry) => [entry.path, { mode: entry.mode, sha: entry.sha }])
+  );
+}
+
+/** The commit the target branch points at now, with every file on it. */
+export async function branchTree(target: Repository): Promise<{
+  readonly commit: string;
+  readonly tree: ReadonlyMap<string, TreeEntry>;
+}> {
+  const head = await headOf(target);
+  return { commit: head.commit, tree: await treeAt(target, head.tree) };
+}
+
+/** A file's bytes by its content hash. */
+export async function blobOf(
+  repository: RepositoryName,
+  sha: string
+): Promise<Buffer> {
+  const blob = await github<{ content: string; encoding: string }>(
+    `${repoPath(repository)}/git/blobs/${sha}`
+  );
+  return Buffer.from(
+    blob.content,
+    blob.encoding === "base64" ? "base64" : "utf8"
+  );
+}
+
 export interface PullRequest {
   readonly draft: boolean;
   readonly number: number;
@@ -184,23 +286,45 @@ export async function openPullRequest(
   change: {
     readonly body: string;
     readonly branch: string;
-    /** New contents by path; `null` deletes the file. */
-    readonly files: Readonly<Record<string, string | null>>;
+    /**
+     * New contents by path: text, or bytes with a file mode (any file, such
+     * as an image or an executable script); `null` deletes the file.
+     */
+    readonly files: Readonly<
+      Record<string, string | { content: Buffer; mode: string } | null>
+    >;
     readonly title: string;
   }
 ): Promise<PullRequest> {
   const baseCommit = await github<{ tree: { sha: string } }>(
     `${repoPath(target)}/git/commits/${base}`
   );
+  // Bytes go up as blobs first: a tree entry's inline content is UTF-8 only.
+  const entries = await mapLimit(
+    Object.entries(change.files),
+    BLOB_UPLOADS,
+    async ([path, content]) => {
+      if (content === null) {
+        return { mode: "100644", path, sha: null, type: "blob" };
+      }
+      if (typeof content === "string") {
+        return { content, mode: "100644", path, type: "blob" };
+      }
+      const blob = await github<{ sha: string }>(
+        `${repoPath(target)}/git/blobs`,
+        {
+          body: {
+            content: content.content.toString("base64"),
+            encoding: "base64",
+          },
+          method: "POST",
+        }
+      );
+      return { mode: content.mode, path, sha: blob.sha, type: "blob" };
+    }
+  );
   const tree = await github<{ sha: string }>(`${repoPath(target)}/git/trees`, {
-    body: {
-      base_tree: baseCommit.tree.sha,
-      tree: Object.entries(change.files).map(([path, content]) =>
-        content === null
-          ? { mode: "100644", path, sha: null, type: "blob" }
-          : { content, mode: "100644", path, type: "blob" }
-      ),
-    },
+    body: { base_tree: baseCommit.tree.sha, tree: entries },
     method: "POST",
   });
   const commit = await github<{ sha: string }>(

@@ -23,6 +23,8 @@ import {
   snapshotOf,
   targetRepository,
 } from "@/lib/github";
+import { updateChange } from "@/lib/template-update-github";
+import { checkForUpdate, templateRepository } from "@/lib/template-version";
 
 /** What a dashboard change request returns: the pull request, or why there isn't one. */
 export type ChangeResult =
@@ -246,6 +248,56 @@ export async function proposeNewMember(input: unknown): Promise<ChangeResult> {
       title: `Add ${config.crew.name} to the crew (${id})`,
     });
     return { ok: true, pull };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+/** What the Update button returns: the pull request, and how many files it left for a person. */
+export type UpdateResult =
+  | {
+      readonly existing: boolean;
+      readonly left: number;
+      readonly ok: true;
+      readonly pull: PullRequest;
+    }
+  | { readonly ok: false; readonly error: string };
+
+/**
+ * Opens a pull request that updates this deployment's branch to the newest
+ * template release, or returns the one already open for it.
+ */
+export async function proposeTemplateUpdate(): Promise<UpdateResult> {
+  const who = await requester();
+  const target = targetRepository();
+  const unavailable = await configChangesUnavailable();
+  if (who === undefined || target === undefined || unavailable !== undefined) {
+    return {
+      error: unavailable ?? "Updates aren't available here.",
+      ok: false,
+    };
+  }
+  try {
+    const update = await checkForUpdate();
+    if (update === undefined) {
+      return { error: "This is already the newest release.", ok: false };
+    }
+    const title = `Update the template to v${update.version}`;
+    const pending = (await openDashboardPullRequests(target)).find(
+      (open) => open.title === title
+    );
+    if (pending) {
+      return { existing: true, left: 0, ok: true, pull: pending };
+    }
+    const repository = templateRepository();
+    const change = await updateChange(target, repository, update.version);
+    const pull = await openPullRequest(target, change.base, {
+      body: `${change.body}\n\nRequested by ${who} in the Lopsi dashboard. Nothing changes until this is merged; Vercel deploys the merge as usual.`,
+      branch: branchName(`update-v${update.version}`),
+      files: change.files,
+      title,
+    });
+    return { existing: false, left: change.left, ok: true, pull };
   } catch (error) {
     return failure(error);
   }

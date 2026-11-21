@@ -25,6 +25,7 @@
     "start": "eve start",
     "test": "vitest run",
     "typecheck": "tsc && tsc -p apps/web",
+    "update:template": "node scripts/update-template.mjs",
     "validate": "node scripts/crew.mjs --check && pnpm run check && pnpm run typecheck && pnpm run knip && pnpm run test && eve info --agent lopsi"
   },
   "dependencies": {

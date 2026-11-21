@@ -2,36 +2,54 @@
 
 **Settings → General** shows your template version, and says when a newer release is out, marking security fixes. Your deployment doesn't change until you update it.
 
-The Deploy button clones this repository rather than forking it, so your copy shares no history with it, and GitHub's Sync Fork button and a plain `git merge` won't work. Apply the changes between two versions instead.
+The Deploy button clones this repository rather than forking it, so your copy shares no history with it, and GitHub's Sync Fork button and a plain `git merge` won't work. An update instead compares three versions of each file: the template's at your release, the template's at the new one, and yours.
 
-## Apply an update
+- A file the template changed and you didn't is updated: changed, added or deleted.
+- A file you've changed too is **kept as you have it** and listed, with a link to the template's change, for you to apply by hand. Your work is never replaced.
+- Crew members' shared files (channels, connections, hooks, tools, limits, memory, sandbox) follow Lopsi's: each member's copy is updated where it still matches the template's, keeping the member's own id.
+- `crew.generated.ts` is rebuilt, and `template.json` records the new version.
 
-From a clone of your repository, with your version and the new one from Settings:
+Neither way below can set environment variables or run setup steps. Read the [release notes](https://github.com/frankievalentine/lopsi-bot-eve/releases) for every version you're skipping past: they say when an update needs one.
 
-```sh
-git remote add template https://github.com/frankievalentine/lopsi-bot-eve.git
-git fetch template --tags
-git checkout -b update-template
-git diff v0.1.0 v0.2.0 -- . ':(exclude)agents' ':(exclude)apps/web/lib/crew.generated.ts' | git apply --3way
-```
+## From the dashboard
 
-You only need `git remote add` once. This keeps your crew, and applies everything else:
+Click **Update** on the Version row in Settings → General. It opens a pull request on your repository with the new release, through the same GitHub connector the dashboard uses for crew changes, and lists what it left for you in the description. Check the Vercel preview, apply anything listed, and merge it.
 
-- A file only the template changed updates as is.
-- A file you both changed gets conflict markers for you to resolve. Your version is never silently replaced.
+Two things it can't do, which it lists instead:
 
-## Check and finish
+- **GitHub Actions workflows** (`.github/workflows/`): the dashboard's GitHub App isn't allowed to change them. Apply those by hand.
+- **Your lockfile**, if you've changed your dependencies: run `pnpm install` on the branch and commit `pnpm-lock.yaml`, or the deployment won't build.
 
-1. Read the [release notes](https://github.com/frankievalentine/lopsi-bot-eve/releases) for each version you're skipping past. They say if an update needs a new variable or setup step.
-2. If `package.json` changed, run `pnpm install`, which updates the lockfile.
-3. Run `pnpm validate`, commit, and open a pull request. Merge it once its checks and Vercel preview look right.
+## From a clone
 
-## Crew members
-
-Because `agents/` is left out, a fix to a crew member's files isn't applied by the command above. The release notes call these out. To see what changed, including for tools and hooks that each member has its own copy of:
+The same update on your machine, on a new branch:
 
 ```sh
-git diff v0.1.0 v0.2.0 -- agents
+pnpm update:template 0.2.0
 ```
 
-Apply what's relevant to each member by hand.
+It needs a clean working tree. It fetches your release and the new one from the template into `refs/lopsi-template/` (not your tags), writes the changes on `update-template-v0.2.0`, stages them, and prints what it kept. Then:
+
+```sh
+pnpm install     # if package.json changed
+pnpm validate
+git commit -m "Update the template to v0.2.0"
+```
+
+Push the branch and open a pull request.
+
+### Coming from a release without the command
+
+Releases before v0.2.0 don't have `pnpm update:template`. Run the new release's copy instead. From your repository's root:
+
+```sh
+git fetch https://github.com/frankievalentine/lopsi-bot-eve.git refs/tags/v0.2.0:refs/lopsi-template/v0.2.0
+mkdir -p ../lopsi-update && git archive refs/lopsi-template/v0.2.0 scripts/update-template.mjs apps/web/lib/template-update.mjs | tar -x -C ../lopsi-update
+node ../lopsi-update/scripts/update-template.mjs 0.2.0
+```
+
+That takes the two files from the release tag, which you can read before running them, and needs nothing installed beyond Node.
+
+## Following another repository
+
+Settings and `pnpm update:template` follow the repository in `apps/web/lib/template.json`. Set `LOPSI_TEMPLATE_REPOSITORY` (`owner/name`) to follow another one, such as your own fork of the template; `pnpm update:template` also takes `--repo owner/name`.

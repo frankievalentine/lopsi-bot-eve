@@ -84,7 +84,9 @@ apps/
       channel-guard.ts      # the gate in front of the Resend channel
       password-attempts.ts  # starter mode: failed sign-ins per address, per instance
       production-mode.ts    # whether Sign in with Vercel is configured
-      template-version.ts   # Settings' Version row and update check (template.json)
+      template-version.ts   # Settings' Version row and update check (template.json, LOPSI_TEMPLATE_REPOSITORY)
+      template-update.mjs   # a template update as a plan: what to update, what to keep; shared with scripts/update-template.mjs
+      template-update-github.ts   # Settings' Update button: the plan from the GitHub API, as a pull request's files
       demo.ts, demo-script.ts, demo-icons.ts   # the demo (NEXT_PUBLIC_LOPSI_DEMO=1): Deploy button, scripted replies, sample connector icons
       member-access.ts      # the bash, web_search, web_fetch and sandbox.ts templates the dashboard writes
       vercel-project.ts     # this deployment's project and team, from its OIDC token
@@ -94,6 +96,7 @@ apps/
 scripts/
   crew.mjs                  # generates the crew list; --check in `pnpm validate`
   setup-sign-in.mjs         # production mode: team-only Vercel App, its credentials, the chat owner store
+  update-template.mjs       # `pnpm update:template`: a template update on a new branch, through git
   vercel-api.mjs            # helpers for setup-sign-in.mjs
 vercel.ts                   # Vercel Services: the web service and the eve agents
 ```
@@ -138,6 +141,7 @@ vercel.ts                   # Vercel Services: the web service and the eve agent
 - **Memory** (`agents/<name>/agent/memory.ts`): eve's `fileMemory()`, one document per person (`byPrincipal`) per member (eve's default namespace), in the private Blob store, under eve's `eve/memory/file` prefix. Production mode only: starter mode's single identity would make it one shared memory, and on Vercel without a store a failing recall fails the turn. The model saves and removes entries with `memory__save_memory` and `memory__remove_memory`; recalled entries reach it as user messages, not instructions. An email or channel sender is a different principal, so a different memory.
 - **Chat history** (`apps/web/lib/chat-store.ts`): list records sit under a SHA-256 hash of the owner (authenticator and principal id), so ids never shape a Blob pathname and one person's folder can't be guessed from another's id. The hook records only user-initiated sessions in production mode, and a storage error never fails a turn. `/api/chats/<id>/transcript` accepts a save only from the chat's recorded owner, same-origin, up to 4 MB; transcripts load only for the owner. The browser only ever grows the saved copy, one save at a time.
 - **Changes by pull request** (`config-actions.ts`, `config-changes.ts`, `github.ts`): the dashboard never changes a running agent. Server actions re-check the caller (production or starter mode; local development has none), validate every field with zod, build the files from the branch, and open a pull request with the GitHub App's installation token from Vercel Connect, which never reaches the browser. Edits carry the values they were made from and are refused if the branch has moved on underneath them. agent.ts is rewritten only in eve's generated shape, and model ids are checked before they're written into code. Merging stays with people in GitHub.
+- **Template updates** (`template-update.mjs`, `template-update-github.ts`, `scripts/update-template.mjs`): an update replaces only files whose content hash still matches the template's at the repository's release, so nothing a person changed is overwritten; the rest is listed. The dashboard reads the template's release trees through the GitHub API (with the installation token, or without one for a public template) and its files from raw.githubusercontent.com, and opens the result as a pull request like any other change. It never writes `.github/workflows/`, which the GitHub App isn't permitted to change. `LOPSI_TEMPLATE_REPOSITORY` changes which repository is followed; the template is trusted code either way, and merging stays with people.
 - **Setup script** (`setup-sign-in.mjs`): runs Vercel API calls through the Vercel CLI's login; request bodies, including secrets, go on stdin and are never printed.
 - **Supply chain**: `pnpm-workspace.yaml` holds new package versions for a day (`minimumReleaseAge`), except the eve release train (`eve`, `nitro`, `workflow`, `@workflow/*`, `@vercel/*`, `ai`, `@ai-sdk/*`), which ships together and is pinned or ranged in `package.json`.
 
