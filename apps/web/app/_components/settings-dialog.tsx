@@ -346,33 +346,26 @@ function LinkButton({
   );
 }
 
-/** Whether Lopsi can see the project's Vercel Connect connectors, and how to fix it when it can't. */
-function ConnectStatus({
-  connectors,
+/** Why Lopsi can't see the project's connectors, and how to fix it. */
+function ConnectProblem({
+  reason,
 }: {
-  readonly connectors: SettingsStatus["connectors"];
+  readonly reason: ConnectorsUnavailable;
 }) {
-  const problem = connectors.ok ? undefined : UNAVAILABLE[connectors.reason];
+  const problem = UNAVAILABLE[reason];
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border px-3.5 py-3">
       <span
         aria-hidden="true"
-        className={cn(
-          "size-2 shrink-0 rounded-full",
-          problem ? "bg-destructive" : "bg-online"
-        )}
+        className="bg-destructive size-2 shrink-0 rounded-full"
       />
       <div className="min-w-40 flex-1">
-        <p className="text-sm font-medium">
-          {problem ? "Not Connected" : "Connected"}
-        </p>
+        <p className="text-sm font-medium">Not Connected</p>
         <p className="text-muted-foreground text-xs text-pretty">
-          {problem
-            ? problem.hint
-            : "Services attached to this project in Vercel show up below."}
+          {problem.hint}
         </p>
       </div>
-      {problem?.token ? (
+      {problem.token ? (
         <div className="flex shrink-0 gap-2">
           <LinkButton href={TOKENS_LINK} variant="default">
             Create Token
@@ -781,21 +774,16 @@ function IntegrationCard({
   readonly onChanged: () => void;
   readonly status: SettingsStatus;
 }) {
-  const { kind, perPerson, serviceName, title } = integration;
+  const { kind, serviceName, title } = integration;
   return (
     <div className="space-y-2 rounded-lg border p-3">
       <div className="flex items-start gap-3">
         <ServiceIcon integration={integration} />
         <span className="min-w-0 flex-1">
-          <span className="flex items-center justify-between gap-2">
-            <span className="truncate text-sm font-medium">{title}</span>
-            <Status active={true} />
-          </span>
-          <span className="text-muted-foreground mt-0.5 block text-xs text-pretty">
+          <span className="block truncate text-sm font-medium">{title}</span>
+          <span className="text-muted-foreground mt-0.5 block text-xs">
             {title === serviceName ? "" : `${serviceName} · `}
-            {kind === "mcp" ? "Its MCP tools" : "Its API"}
-            {" · "}
-            {perPerson ? "Each person signs in" : "Shared credential"}
+            {kind === "mcp" ? "MCP" : "API"}
           </span>
         </span>
       </div>
@@ -828,14 +816,18 @@ function IntegrationsSection({
     <>
       <section className="space-y-2">
         <div className="flex min-h-7 flex-wrap items-center justify-between gap-x-3 gap-y-1">
-          <h3 className="text-sm font-medium">
-            Connected Services
+          <div className="flex items-center gap-2.5">
+            <h3 className="text-sm font-medium">Connected Services</h3>
             {connectors.ok ? (
-              <span className="text-muted-foreground ml-2 text-xs font-normal">
-                {connectors.list.length}
+              <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
+                <span
+                  aria-hidden="true"
+                  className="bg-online size-1.5 rounded-full"
+                />
+                Connected
               </span>
             ) : null}
-          </h3>
+          </div>
           <span className="flex items-center gap-2">
             {onConnections ? (
               <Button onClick={onConnections} size="xs" variant="outline">
@@ -848,11 +840,11 @@ function IntegrationsSection({
               Refresh
             </Button>
             <LinkButton href={PROJECT_CONNECT_LINK} variant="default">
-              Add in Vercel
+              Add Connectors
             </LinkButton>
           </span>
         </div>
-        <ConnectStatus connectors={connectors} />
+        {connectors.ok ? null : <ConnectProblem reason={connectors.reason} />}
         {connectors.ok && connectors.list.length === 0 ? (
           <Group>
             <Row
