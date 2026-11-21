@@ -4,7 +4,7 @@ import { betterAuth } from "better-auth";
 const SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
 const DEVELOPMENT_ALLOWED_HOSTS = ["localhost:*", "127.0.0.1:*"];
 
-/** Written by `eve add channel/web` when it sets up Sign in with Vercel. */
+/** Written by `pnpm setup:sign-in` when it sets up Sign in with Vercel. */
 const SIGN_IN_VARIABLES = [
   "VERCEL_APP_CLIENT_ID",
   "VERCEL_APP_CLIENT_SECRET",

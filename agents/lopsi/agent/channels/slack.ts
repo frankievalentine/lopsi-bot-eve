@@ -3,8 +3,9 @@ import { createConnectWebhookVerifier } from "@vercel/connect/chat";
 import { slackChannel } from "eve/channels/slack";
 import { chatConnector } from "../../../../apps/web/lib/connectors.js";
 
-// This crew member's id. The dashboard's New crew member rewrites this line
-// when it copies the channel; copy it by hand the same way.
+// The crew member that answers Slack: its events arrive at /eve/<MEMBER_ID>/v1/slack.
+// New crew members don't copy this channel; to have another member answer,
+// move this file to it and change this line.
 const MEMBER_ID = "lopsi";
 
 /**

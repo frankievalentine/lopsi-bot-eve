@@ -13,7 +13,7 @@ An [eve](https://eve.dev) template for Vercel: a crew of AI agents, each with it
 ## What you get
 
 - **A crew of eve agents.** Each member is an eve agent under `agents/<name>/`, with a mascot, a role and its own chats. It starts with Lopsi; add more from the dashboard.
-- **A dashboard to work with them.** Chat with tool runs, approvals and questions; a computer panel showing each chat's sandbox; chat history on every device; Settings.
+- **A dashboard to work with them.** Chat with tool runs, approvals and questions; a computer panel showing each chat's sandbox; chat history on every device with Sign in with Vercel; Settings.
 - **Changes by pull request.** Edit a crew member's name, model, instructions, tools or connectors in the dashboard, and it opens a pull request. Nothing changes until you merge it.
 - **Integrations.** Any service in [Vercel Connect](https://vercel.com/docs/connect) (Slack, Google, Stripe, Linear, Notion and the rest), added in Vercel and picked up without a redeploy. Chat with the crew in Slack or Telegram, and email it.
 - **Safe by default.** A shared password to start, or Sign in with Vercel for your team. The shell has no network, and anything that changes something asks first.
@@ -29,7 +29,7 @@ The button clones this repository into your GitHub account and deploys it. It as
 
 It also adds a GitHub App connector, so the dashboard can open pull requests (install the app on your new repository with contents and pull requests access), a private Blob store, and Upstash for Redis for email threads.
 
-Then add services from the dashboard: Settings → **Integrations** → **Add in Vercel** opens the project's Connect page. Anything you attach there shows up in Lopsi within a minute. See [Integrations](docs/integrations.md).
+Then add services from the dashboard: Settings → **Integrations** → **Add Connectors** opens the project's Connect page. Anything you attach there shows up in Lopsi within a minute. See [Integrations](docs/integrations.md).
 
 Email to the crew is a Resend connector too, turned on from its card in Settings ([Email](docs/integrations.md#email)). Only [Sign in with Vercel](docs/access.md#production-mode) for your team still runs from a clone of your repository linked to the project (`vercel link`): `pnpm setup:sign-in`.
 
@@ -40,7 +40,7 @@ Email to the crew is a Resend connector too, turned on from its card in Settings
 | The crew's models | [AI Gateway](https://vercel.com/docs/ai-gateway) (the free tier works) | Nothing: the deployment's OIDC token |
 | Dashboard pull requests | A [Vercel Connect](https://vercel.com/docs/connect) GitHub App connector | The Deploy button |
 | Services, and chat in Slack or Telegram | [Vercel Connect](https://vercel.com/docs/connect) connectors, listed with `VERCEL_TOKEN` | You, in Vercel |
-| Sign in with Vercel, private chats, chat history, workspace snapshots, approved hosts | A private [Vercel Blob](https://vercel.com/docs/vercel-blob) store | The Deploy button, or `pnpm setup:sign-in` |
+| Sign in with Vercel, private chats, chat history, workspace snapshots, approved hosts, sender allowlists, memory | A private [Vercel Blob](https://vercel.com/docs/vercel-blob) store | The Deploy button, or `pnpm setup:sign-in` |
 | Email | [Upstash for Redis](https://vercel.com/marketplace/upstash), for conversation threads | The Deploy button |
 
 ## Stack

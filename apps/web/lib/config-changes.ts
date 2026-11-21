@@ -34,7 +34,7 @@ import {
 type CrewData = ReturnType<typeof CrewSchema.parse>;
 
 const GENERATED = "apps/web/lib/crew.generated.ts";
-/** The crew member new ones are copied from: its channel (access modes) and connections. */
+/** The crew member new ones are copied from (see TEMPLATE_PATHS). */
 const TEMPLATE_MEMBER = "lopsi";
 /**
  * What a new member copies from the template member: its web and email
@@ -42,7 +42,7 @@ const TEMPLATE_MEMBER = "lopsi";
  * (session budget, sandbox network policy, web_fetch approval).
  */
 const TEMPLATE_PATHS = [
-  // Only the channels every member has; a provider channel (Sendblue, …)
+  // Only the channels every member has; a provider channel (Slack, Telegram)
   // belongs to the one member set up to answer it.
   "agent/channels/eve.ts",
   "agent/channels/resend.ts",
@@ -303,7 +303,7 @@ function withMemberId(path: string, content: string, id: string): string {
 
 /**
  * The files for a new crew member: its crew.json, instructions and model, the
- * template member's channel and connections, and the regenerated crew list.
+ * template member's shared files (TEMPLATE_PATHS), and the regenerated crew list.
  *
  * @throws {@link ConfigConflictError} For a taken or invalid id, or a missing template.
  */

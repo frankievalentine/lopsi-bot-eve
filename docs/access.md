@@ -1,16 +1,16 @@
 # Access
 
-A deployment admits people in one of two modes. Production mode takes precedence when it is configured.
+A deployment admits people in one of two modes. Production mode takes precedence when it is configured: once its sign-in variables are set, the shared password is no longer accepted, even before the Blob store is connected.
 
 ## Starter mode
 
-One shared password, and nothing else to set up:
+Settings shows it as **Shared Password**. One shared password, and nothing else to set up:
 
 | Environment variable | What to enter |
 | --- | --- |
 | `LOPSI_ACCESS_PASSWORD` | The password visitors enter before they reach the crew. At least 16 characters; generate one with `openssl rand -base64 32`. |
 
-After 10 wrong passwords from one address, that address waits 15 minutes. The count is kept in each server instance's memory, so it slows guessing rather than stopping it; the password's length is the real defense.
+After 10 wrong passwords from one address, that address is locked out until 15 minutes after its first wrong try. The count is kept in each server instance's memory, so it slows guessing rather than stopping it; the password's length is the real defense.
 
 Everyone with the password acts as the same identity, so they share chats and connection grants. Share it only with people who may see each other's work. Changing it signs everyone out.
 
@@ -26,7 +26,7 @@ eve deploy
 The script does two things, and only what is missing, so re-running it is safe:
 
 1. The same Vercel API calls as eve's own Sign in with Vercel setup: a Vercel App that only the project's team can sign in to, and `VERCEL_APP_CLIENT_ID`, `VERCEL_APP_CLIENT_SECRET` and `BETTER_AUTH_SECRET` for production and preview. When they're already set, it checks that the app is still team-only.
-2. A private Vercel Blob store (`BLOB_STORE_ID`) that keeps each chat to the person who started it. Blob usage may incur charges.
+2. A private Vercel Blob store (`BLOB_STORE_ID`, or `BLOB_READ_WRITE_TOKEN`) that keeps each chat to the person who started it, unless the project already has one. Blob usage may incur charges.
 
 Production mode starts only with both. Sign-in sessions last 8 hours and need no database, and the shared password is no longer accepted. Your role must be allowed to manage Vercel Apps, Blob stores and environment variables; otherwise a team owner can run it.
 

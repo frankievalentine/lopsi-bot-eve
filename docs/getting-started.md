@@ -35,15 +35,15 @@ Starter mode gives everyone with the password the same identity and the same cha
 pnpm setup:sign-in
 ```
 
-It creates a Vercel App only your team can sign in to and a private Blob store. Deploy afterwards. Details: [docs/access.md](access.md#production-mode).
+It creates a Vercel App only your team can sign in to and, if the project doesn't have one yet, a private Blob store. Deploy afterwards. Details: [docs/access.md](access.md#production-mode).
 
 ## 4. Shape the crew
 
-Open **Edit** in a crew member's chat to change its name, role, mascot, model, instructions, tools and connectors, or **New Crew Member** in the sidebar to add one. Each opens a pull request; merge it and Vercel deploys the change. **Pending Changes** lists the open ones. Details: [docs/crew.md](crew.md).
+Open the **…** menu in a crew member's chat and choose **Edit** to change its name, role, mascot, model, instructions, tools and connectors, or **New Crew Member** in the sidebar to add one. Each opens a pull request; merge it and Vercel deploys the change. **Pending Changes** lists the open ones. Details: [docs/crew.md](crew.md).
 
 ## 5. Add integrations
 
-Open Settings → **Integrations** → **Add in Vercel**. On the project's Connect page, create a connector for any service (Slack, Google, Stripe, Linear, Notion, …) and attach it to this project. It shows up in Settings within a minute, and the crew can use it, with no redeploy. Details: [Integrations](integrations.md).
+Open Settings → **Integrations** → **Add Connectors**. On the project's Connect page, create a connector for any service (Slack, Google, Stripe, Linear, Notion, …) and attach it to this project. It shows up in Settings within a minute, and the crew can use it, with no redeploy. Details: [Integrations](integrations.md).
 
 | To | Do | Details |
 | --- | --- | --- |

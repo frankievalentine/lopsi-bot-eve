@@ -9,7 +9,7 @@ agents/<name>/
   evals/        # optional
 ```
 
-To add one, create the directory (start from `agents/lopsi/`), then run `pnpm crew` to regenerate the dashboard's crew list. `pnpm validate` fails if you forget. `crew.json` is described by `scripts/crew.schema.json`; an optional `order` sets its place in the crew list (lowest first, the rest by directory name). Without a `crew.json`, the agent still appears, named after its directory. Its chat lives at `/c/<name>`.
+To add one, create the directory (start from `agents/lopsi/`), then run `pnpm crew` to regenerate the dashboard's crew list. `pnpm validate` fails if you forget. `crew.json` is described by `scripts/crew.schema.json`; an optional `order` sets its place in the crew list (lowest first, the rest by directory name). Without a `crew.json`, the agent still appears, named after its directory, but one started from `agents/lopsi/` needs it: its connections, `call_service` tool and email channel read it. Its chat lives at `/c/<name>`.
 
 Each chat has its own sandbox. The **Computer** button in the chat header shows what it did: the shell commands it ran, with their output and exit codes, and the files the crew member wrote or read. In production mode the agent also snapshots the workspace after each turn that used the shell or wrote a file (small text files' content, every file's name and size, in the private Blob store), so files the shell made on its own show too.
 
@@ -17,10 +17,10 @@ Each chat has its own sandbox. The **Computer** button in the chat header shows 
 
 **Settings** in the sidebar (or the account menu on a phone) opens a dialog with four sections:
 
-- **General**: the access mode, where chat history is kept, where pull requests go, and [removing the project](removing.md).
-- **Integrations**: each connector and channel, Off or Active, with a link to set up the rest.
+- **General**: the access mode, where chat history is kept, the template version (and whether an update is out), where pull requests go, and [removing the project](removing.md).
+- **Integrations**: the services attached in Vercel Connect, each with its status (Connected, Not connected, Credential failed, Can't check), **Add Connectors** and **Refresh**; chat in Slack or Telegram and who may message the bot; approved hosts; and Receive Email with who may email the crew. See [Integrations](integrations.md).
 - **Crew**: what each member has beyond its Edit form, from its deployed agent: active channels, services and whether they ask first, skills, schedules, subagents and sandbox.
-- **Usage**: the budget per chat, and links to AI Gateway, Observability and Tracing.
+- **Usage**: the budget per chat (editable on Vercel, from $0.25 to $50; saving redeploys), and links to AI Gateway, Observability and Tracing.
 
 Changes open the dashboard's own dialogs: Connections, Pending Changes, and a member's Edit.
 
@@ -33,4 +33,4 @@ This needs a GitHub connector in Vercel Connect: the GitHub App the Deploy butto
 - A pull request is a draft where GitHub allows one; it names who asked for it and lists the files it touches.
 - An edit is refused if the crew member changed on the branch since the dialog opened.
 - The model can be changed while `agent.ts` still has eve's generated shape; after a hand edit, change it there. Instructions must be a single `instructions.md`.
-- A new crew member copies `agents/lopsi`'s web and email channels, connections, hooks, tools, session budget and sandbox, and gets its own `agent.ts`, `instructions.md` and `crew.json`. Slack and Telegram stay with Lopsi, which answers them.
+- A new crew member copies `agents/lopsi`'s web and email channels, connections, hooks, tools, memory, session budget and sandbox, and gets its own `agent.ts`, `instructions.md` and `crew.json`. Slack and Telegram stay with Lopsi, which answers them.
