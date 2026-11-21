@@ -16,7 +16,7 @@ const MAX_TOTAL_BYTES = 1.5 * 1024 * 1024;
 // Size, modified time and path of each file, NUL-separated. eve's own files
 // (.eve/), dependencies and git internals aren't the work.
 const LIST = [
-  `cd ${WORKSPACE}`,
+  `cd ${WORKSPACE} &&`,
   "find . -type f -not -path './.eve/*' -not -path '*/node_modules/*' -not -path '*/.git/*'",
   String.raw`-printf '%s\t%T@\t%P\0'`,
   `| head -z -n ${MAX_FILES + 1}`,
