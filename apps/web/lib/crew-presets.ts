@@ -43,15 +43,16 @@ export const MODEL_NOTES: Readonly<Record<string, string>> = {
   "openai/gpt-6.1-terra": "Strong at planning and writing.",
 };
 
+/** `title` completes "You are <name>, the crew's <title>", so it's a noun, as written. */
 function draft(
   name: string,
-  role: string,
+  title: string,
   purpose: string,
   work: readonly string[]
 ): string {
   return `# Identity
 
-You are ${name}, the crew's ${role.toLowerCase()}. You ${purpose}.
+You are ${name}, the crew's ${title}. You ${purpose}.
 
 # How you work
 
@@ -66,7 +67,7 @@ export const CREW_PRESETS: readonly CrewPreset[] = [
     id: "scout",
     instructions: draft(
       "Scout",
-      "Research",
+      "researcher",
       "find, read and summarize so the team can decide quickly",
       [
         "Link to every source you use.",
@@ -92,7 +93,7 @@ export const CREW_PRESETS: readonly CrewPreset[] = [
     id: "chief",
     instructions: draft(
       "Chief",
-      "Chief of staff",
+      "chief of staff",
       "keep the team on track: plans, follow-ups and summaries",
       [
         "Start with what needs a decision today.",
@@ -118,7 +119,7 @@ export const CREW_PRESETS: readonly CrewPreset[] = [
     id: "beacon",
     instructions: draft(
       "Beacon",
-      "Service monitor",
+      "service monitor",
       "watch our services and flag what needs a person",
       [
         "Say what's affected and since when before anything else.",
@@ -144,7 +145,7 @@ export const CREW_PRESETS: readonly CrewPreset[] = [
     id: "ledger",
     instructions: draft(
       "Ledger",
-      "Finance",
+      "finance lead",
       "keep our books tidy: invoices, spend and summaries",
       [
         "Show your arithmetic and where each number came from.",
@@ -170,7 +171,7 @@ export const CREW_PRESETS: readonly CrewPreset[] = [
     id: "tinker",
     instructions: draft(
       "Tinker",
-      "Ops and CI",
+      "ops and CI engineer",
       "keep builds green and deploys moving",
       [
         "Read the logs before proposing a fix.",
@@ -196,7 +197,7 @@ export const CREW_PRESETS: readonly CrewPreset[] = [
     id: "relay",
     instructions: draft(
       "Relay",
-      "Inbox and messages",
+      "inbox manager",
       "answer messages and draft replies so nobody waits",
       [
         "Draft replies; send only when asked.",
