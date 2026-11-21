@@ -13,7 +13,7 @@
  */
 
 import type { ConnectionToolAnnotations } from "eve/tools/approval";
-import { deploymentTarget, vercelApi } from "./vercel-project";
+import { deploymentTarget, VercelApiError, vercelApi } from "./vercel-project";
 
 /** How long a listing is reused, so a connector attached in Vercel shows up within this. */
 const LISTING_MS = 30_000;
@@ -46,8 +46,29 @@ export interface Connector {
   readonly url?: string;
 }
 
-/** Why there's no list of connectors. */
-export type ConnectorsUnavailable = "no-project" | "no-token" | "refused";
+/**
+ * Why there's no list of connectors. `expired`: Vercel didn't accept the token
+ * (401). `no-access`: the token can't see this team's connectors (403 or 404),
+ * typically because it's scoped to one project instead of the team.
+ * `refused`: anything else.
+ */
+export type ConnectorsUnavailable =
+  | "expired"
+  | "no-access"
+  | "no-project"
+  | "no-token"
+  | "refused";
+
+/** Why a failed listing failed, from the status Vercel answered. */
+export function unavailableReason(error: unknown): ConnectorsUnavailable {
+  if (!(error instanceof VercelApiError)) {
+    return "refused";
+  }
+  if (error.status === 401) {
+    return "expired";
+  }
+  return error.status === 403 || error.status === 404 ? "no-access" : "refused";
+}
 
 export type ConnectorListing =
   | { readonly connectors: readonly Connector[]; readonly ok: true }
@@ -215,7 +236,7 @@ async function listConnectors(): Promise<ConnectorListing> {
     return { connectors: toConnectors(records, target.projectId), ok: true };
   } catch (error) {
     console.error("[lopsi] couldn't list Vercel Connect connectors:", error);
-    return { ok: false, reason: "refused" };
+    return { ok: false, reason: unavailableReason(error) };
   }
 }
 

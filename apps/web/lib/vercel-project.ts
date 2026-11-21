@@ -33,6 +33,16 @@ export async function deploymentTarget(): Promise<
 
 const API = "https://api.vercel.com";
 
+/** A Vercel API call that didn't succeed, with the status it answered. */
+export class VercelApiError extends Error {
+  readonly status: number;
+  constructor(status: number, path: string) {
+    super(`Vercel answered ${status} for ${path}.`);
+    this.name = "VercelApiError";
+    this.status = status;
+  }
+}
+
 /** Calls the Vercel API with `VERCEL_TOKEN`, on this deployment's team. */
 export async function vercelApi(
   target: DeploymentTarget,
@@ -58,7 +68,7 @@ export async function vercelApi(
     }
   );
   if (!response.ok) {
-    throw new Error(`Vercel answered ${response.status} for ${path}.`);
+    throw new VercelApiError(response.status, path);
   }
   const text = await response.text();
   return text ? JSON.parse(text) : undefined;

@@ -112,6 +112,11 @@ export interface Integration {
     /** The account's domains in Resend, to pick from. */
     readonly suggestions: readonly string[];
   };
+  /**
+   * A per-person service the viewer hasn't signed in to yet: not a failure,
+   * since the crew asks them to connect the first time it needs it.
+   */
+  readonly firstUse?: true;
   readonly icon?: string;
   readonly id: string;
   readonly kind: Connector["kind"];
@@ -126,15 +131,19 @@ export interface Integration {
 
 type Holder = Awaited<ReturnType<typeof grantHolder>>;
 
+/** A sentinel for a per-person service the viewer hasn't connected yet. */
+const FIRST_USE = Symbol("first use");
+
 /**
  * Whether a connector works: Connect hands out its shared credential, or, for
- * one each person signs in to, the viewer's own grant. Nobody to hold a grant
- * (local development) only needs the connector itself to be attached.
+ * one each person signs in to, the viewer's own grant ({@link FIRST_USE} when
+ * they haven't signed in yet). Nobody to hold a grant (local development) only
+ * needs the connector itself to be attached.
  */
 async function problemOf(
   connector: Connector,
   holder: Holder
-): Promise<string | undefined> {
+): Promise<string | typeof FIRST_USE | undefined> {
   if (connector.perPerson && holder === undefined) {
     return;
   }
@@ -149,7 +158,7 @@ async function problemOf(
       (error instanceof UserAuthorizationRequiredError ||
         error instanceof NoValidTokenError)
     ) {
-      return "Not connected";
+      return FIRST_USE;
     }
     return connector.perPerson ? "Can't check" : "Credential failed";
   }
@@ -188,7 +197,8 @@ async function integrationOf(
     serviceName: connector.serviceName,
     title: connector.title,
     ...(connector.icon ? { icon: connector.icon } : {}),
-    ...(problem === undefined ? {} : { problem }),
+    ...(problem === FIRST_USE ? { firstUse: true as const } : {}),
+    ...(typeof problem === "string" ? { problem } : {}),
     ...(domains === undefined ? {} : { domains }),
     ...(email === undefined ? {} : { email }),
     ...(service === undefined
@@ -303,12 +313,12 @@ function demoSettings() {
             title: "Linear",
           },
           {
+            firstUse: true as const,
             icon: DEMO_ICONS.notion,
             id: "scl_demo_notion",
             kind: "mcp" as const,
             name: "notion",
             perPerson: true,
-            problem: "Not connected",
             serviceName: "Notion",
             title: "Notion",
           },
