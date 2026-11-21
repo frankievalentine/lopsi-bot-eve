@@ -12,7 +12,7 @@ The crew reaches other services through [Vercel Connect](https://vercel.com/docs
 
 A deployment can't list its own connectors with its OIDC token, so Lopsi needs a Vercel access token for that:
 
-1. [Create a token](https://vercel.com/account/tokens) scoped to the project's team, with an expiry.
+1. [Create a token](https://vercel.com/account/tokens) with its **Scope** set to the project's team, with an expiry. A token scoped to a single project won't work: connectors belong to the team, so Vercel won't show them to it.
 2. Add it to the project as `VERCEL_TOKEN`, marked **Sensitive**, then redeploy. The Deploy button asks for it up front.
 
 Only the server reads it: the model, the sandbox and the browser never see it. A Vercel token can do anything on its team, so treat it like a password, and replace it before it expires. Without it, Settings → **Integrations** says so, and the crew has no services.

@@ -367,16 +367,24 @@ const UNAVAILABLE: Record<
   ConnectorsUnavailable,
   { readonly hint: string; readonly token: boolean }
 > = {
+  expired: {
+    hint: "Vercel didn't accept the token; it may have expired. Create a new one, scoped to the team.",
+    token: true,
+  },
+  "no-access": {
+    hint: "This token can't see the team's connectors. Create one scoped to the team, not a single project.",
+    token: true,
+  },
   "no-project": {
     hint: "Run `vercel link` and `vercel env pull` to connect locally.",
     token: false,
   },
   "no-token": {
-    hint: "Create a Vercel token to see your connectors.",
+    hint: "Create a Vercel token, scoped to the team, to see your connectors.",
     token: true,
   },
   refused: {
-    hint: "The token expired or can't reach this team. Create a new one.",
+    hint: "Vercel couldn't list the connectors. Try Refresh; if it keeps failing, create a new token scoped to the team.",
     token: true,
   },
 };

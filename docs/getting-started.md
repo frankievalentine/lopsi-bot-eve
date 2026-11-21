@@ -7,7 +7,7 @@ From the Deploy button to a crew you can talk to, then the parts you add when yo
 Click **Deploy** in the [README](../README.md#deploy). Vercel clones this repository into your GitHub account and deploys it, and asks for:
 
 - **`LOPSI_ACCESS_PASSWORD`**: the password your visitors enter ([starter mode](access.md#starter-mode)). Use at least 16 characters, for example from `openssl rand -base64 32`.
-- **`VERCEL_TOKEN`**: a [Vercel token](https://vercel.com/account/tokens) for the team, with an expiry, so Lopsi can see the services you add in Vercel Connect ([why](integrations.md#let-lopsi-see-your-connectors)). Only the server reads it.
+- **`VERCEL_TOKEN`**: a [Vercel token](https://vercel.com/account/tokens) scoped to the team (not a single project), with an expiry, so Lopsi can see the services you add in Vercel Connect ([why](integrations.md#let-lopsi-see-your-connectors)). Only the server reads it.
 - **A GitHub App connector**: install the app on your new repository, with read and write access to contents and pull requests, so the dashboard can open pull requests.
 - **A private Blob store**, for what Lopsi keeps between chats, and **Upstash for Redis**, for email threads.
 

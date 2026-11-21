@@ -20,12 +20,12 @@ An [eve](https://eve.dev) template for Vercel: a crew of AI agents, each with it
 
 ## Deploy
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ffrankievalentine%2Flopsi-bot-eve&project-name=lopsi-bot&repository-name=lopsi-bot&env=LOPSI_ACCESS_PASSWORD%2CVERCEL_TOKEN&envDescription=LOPSI_ACCESS_PASSWORD%3A%20the%20password%20your%20crew%27s%20visitors%20enter%2C%20at%20least%2016%20characters%20%28openssl%20rand%20-base64%2032%29.%20VERCEL_TOKEN%3A%20a%20Vercel%20token%20for%20this%20team%2C%20so%20Lopsi%20can%20see%20the%20services%20you%20add%20in%20Vercel%20Connect.&envLink=https%3A%2F%2Fgithub.com%2Ffrankievalentine%2Flopsi-bot-eve%2Fblob%2Fmain%2Fdocs%2Fgetting-started.md%231-deploy&connect=%5B%7B%22type%22%3A%22github%22%2C%22env%22%3A%22GITHUB_CONNECTOR%22%7D%5D&stores=%5B%7B%22type%22%3A%22blob%22%2C%22access%22%3A%22private%22%7D%2C%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22upstash%22%2C%22productSlug%22%3A%22upstash-kv%22%2C%22protocol%22%3A%22storage%22%7D%5D)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ffrankievalentine%2Flopsi-bot-eve&project-name=lopsi-bot&repository-name=lopsi-bot&env=LOPSI_ACCESS_PASSWORD%2CVERCEL_TOKEN&envDescription=LOPSI_ACCESS_PASSWORD%3A%20the%20password%20your%20crew%27s%20visitors%20enter%2C%20at%20least%2016%20characters%20%28openssl%20rand%20-base64%2032%29.%20VERCEL_TOKEN%3A%20a%20Vercel%20token%20scoped%20to%20this%20team%20%28not%20one%20project%29%2C%20so%20Lopsi%20can%20see%20the%20services%20you%20add%20in%20Vercel%20Connect.&envLink=https%3A%2F%2Fgithub.com%2Ffrankievalentine%2Flopsi-bot-eve%2Fblob%2Fmain%2Fdocs%2Fgetting-started.md%231-deploy&connect=%5B%7B%22type%22%3A%22github%22%2C%22env%22%3A%22GITHUB_CONNECTOR%22%7D%5D&stores=%5B%7B%22type%22%3A%22blob%22%2C%22access%22%3A%22private%22%7D%2C%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22upstash%22%2C%22productSlug%22%3A%22upstash-kv%22%2C%22protocol%22%3A%22storage%22%7D%5D)
 
 The button clones this repository into your GitHub account and deploys it. It asks for:
 
 - a password for [starter mode](docs/access.md#starter-mode);
-- `VERCEL_TOKEN`, a [Vercel token](https://vercel.com/account/tokens) for the team, so Lopsi can see the services you add in Vercel Connect. Only the server reads it.
+- `VERCEL_TOKEN`, a [Vercel token](https://vercel.com/account/tokens) scoped to the team (not a single project), so Lopsi can see the services you add in Vercel Connect. Only the server reads it.
 
 It also adds a GitHub App connector, so the dashboard can open pull requests (install the app on your new repository with contents and pull requests access), a private Blob store, and Upstash for Redis for email threads.
 

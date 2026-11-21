@@ -8,7 +8,9 @@ import {
   chatPath,
   connectorApproval,
   toConnectors,
+  unavailableReason,
 } from "./connectors";
+import { VercelApiError } from "./vercel-project";
 
 const PROJECT = "prj_here";
 /** crew-core.mjs's rule for a connector name. */
@@ -200,5 +202,18 @@ describe("allAttachments", () => {
       c1: { connectors: [], pagination: { next: "c1" } },
     });
     await expect(allAttachments(fetchPage)).rejects.toThrow("twice");
+  });
+});
+
+describe("unavailableReason", () => {
+  it("tells a token that can't see the team from one Vercel didn't accept", () => {
+    expect(unavailableReason(new VercelApiError(404, "/x"))).toBe("no-access");
+    expect(unavailableReason(new VercelApiError(403, "/x"))).toBe("no-access");
+    expect(unavailableReason(new VercelApiError(401, "/x"))).toBe("expired");
+  });
+
+  it("calls anything else refused", () => {
+    expect(unavailableReason(new VercelApiError(500, "/x"))).toBe("refused");
+    expect(unavailableReason(new Error("network"))).toBe("refused");
   });
 });
