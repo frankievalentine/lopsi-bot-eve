@@ -876,18 +876,15 @@ function IntegrationsSection({
       </section>
       {connectors.ok &&
       !connectors.list.some((integration) => integration.email) ? (
-        <p className="text-muted-foreground text-xs text-pretty">
-          To let people email the crew, add a Resend connector (an API key with
-          full access) and turn on email on its row.{" "}
-          <a
-            className="text-foreground underline-offset-4 hover:underline"
-            href={`${GUIDE}/integrations.md#email`}
-            rel="noreferrer"
-            target="_blank"
+        <Group title="Email">
+          <Row
+            hint="Add a Resend connector, then turn on email from its row above."
+            label="Email the Crew"
           >
-            Guide
-          </a>
-        </p>
+            <Status active={false} />
+            <External href={`${GUIDE}/integrations.md#email`}>Guide</External>
+          </Row>
+        </Group>
       ) : null}
     </>
   );
