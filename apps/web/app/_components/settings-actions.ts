@@ -1,6 +1,11 @@
 "use server";
 
-import { getToken } from "@vercel/connect";
+import {
+  getToken,
+  getTokenResponse,
+  NoValidTokenError,
+  UserAuthorizationRequiredError,
+} from "@vercel/connect";
 import { headers } from "next/headers";
 import { type AccessMode, accessMode } from "@/lib/access";
 import { type MemberSetupResult, memberSetup } from "@/lib/agent-info";
@@ -20,6 +25,7 @@ import {
   chatPath,
   connectorListing,
   EMAIL_PATH,
+  grantSubject,
   sendEventsTo,
 } from "@/lib/connectors";
 import { CREW } from "@/lib/crew";
@@ -27,6 +33,7 @@ import { currentAccount } from "@/lib/current-account";
 import { isDemo } from "@/lib/demo";
 import { emailDomain, emailSetup, redisStateUrl } from "@/lib/email";
 import { configChangesUnavailable, targetRepository } from "@/lib/github";
+import { grantHolder } from "@/lib/grant-holder";
 import { isProductionMode } from "@/lib/production-mode";
 import { sessionBudgetUsd } from "@/lib/session-budget";
 import {
@@ -102,8 +109,43 @@ export interface Integration {
   /** Its connection name, which crew.json `connectors` uses. */
   readonly name: string;
   readonly perPerson: boolean;
+  /** Why it isn't working, when it isn't; `undefined` while it works. */
+  readonly problem?: string;
   readonly serviceName: string;
   readonly title: string;
+}
+
+type Holder = Awaited<ReturnType<typeof grantHolder>>;
+
+/**
+ * Whether a connector works: Connect hands out its shared credential, or, for
+ * one each person signs in to, the viewer's own grant. Nobody to hold a grant
+ * (local development) only needs the connector itself to be attached.
+ */
+async function problemOf(
+  connector: Connector,
+  holder: Holder
+): Promise<string | undefined> {
+  if (connector.perPerson && holder === undefined) {
+    return;
+  }
+  const subject = connector.perPerson
+    ? grantSubject(holder as NonNullable<Holder>)
+    : { type: "app" as const };
+  try {
+    await getTokenResponse(connector.id, { subject }, { forceRefresh: true });
+  } catch (error) {
+    if (
+      connector.perPerson &&
+      (error instanceof UserAuthorizationRequiredError ||
+        error instanceof NoValidTokenError)
+    ) {
+      return "Not connected for you yet. Connect it from Your Connections.";
+    }
+    return connector.perPerson
+      ? "Vercel Connect couldn't check your connection."
+      : "Vercel Connect couldn't get its credential. Check the connector in Vercel.";
+  }
 }
 
 /** Whether a member's deployed agent has a channel. */
@@ -118,8 +160,10 @@ function hasChannel(
 
 async function integrationOf(
   connector: Connector,
-  setups: Readonly<Record<string, MemberSetupResult>>
+  setups: Readonly<Record<string, MemberSetupResult>>,
+  holder: Holder
 ): Promise<Integration> {
+  const problem = await problemOf(connector, holder);
   const service = CHAT_SERVICES.find((entry) => entry === connector.service);
   const domains =
     connector.kind === "api"
@@ -137,6 +181,7 @@ async function integrationOf(
     serviceName: connector.serviceName,
     title: connector.title,
     ...(connector.icon ? { icon: connector.icon } : {}),
+    ...(problem === undefined ? {} : { problem }),
     ...(domains === undefined ? {} : { domains }),
     ...(email === undefined ? {} : { email }),
     ...(service === undefined
@@ -253,6 +298,8 @@ function demoSettings() {
             kind: "mcp" as const,
             name: "notion",
             perPerson: true,
+            problem:
+              "Not connected for you yet. Connect it from Your Connections.",
             serviceName: "Notion",
             title: "Notion",
           },
@@ -314,6 +361,7 @@ export async function loadSettings(): Promise<
   const repository = targetRepository();
   const setupsById = Object.fromEntries(setups);
   const listing = await connectorListing();
+  const holder = await grantHolder();
   return {
     ok: true,
     setups: setupsById,
@@ -324,7 +372,7 @@ export async function loadSettings(): Promise<
         ? {
             list: await Promise.all(
               listing.connectors.map((connector) =>
-                integrationOf(connector, setupsById)
+                integrationOf(connector, setupsById, holder)
               )
             ),
             ok: true,

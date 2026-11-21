@@ -6,34 +6,17 @@ import {
   revokeToken,
   UserAuthorizationRequiredError,
 } from "@vercel/connect";
-import { OPERATOR } from "@/lib/access";
 import {
   connectors as attachedConnectors,
   grantSubject,
 } from "@/lib/connectors";
-import { currentAccount } from "@/lib/current-account";
+import { grantHolder } from "@/lib/grant-holder";
 
 /** Whether the signed-in person has connected their account to one service. */
 export interface ConnectionStatus {
   readonly id: string;
   /** `unknown` when Vercel Connect couldn't be asked. */
   readonly state: "connected" | "not-connected" | "unknown";
-}
-
-/**
- * Whose grants this request may see and revoke: the signed-in person's own,
- * resolved on the server. Local development has no person to hold a grant.
- */
-async function grantHolder() {
-  const account = await currentAccount();
-  if (
-    typeof account === "string" ||
-    account.kind === "open" ||
-    account.kind === "demo"
-  ) {
-    return;
-  }
-  return account.kind === "vercel" ? { principalId: account.id } : OPERATOR;
 }
 
 /** The signed-in person's status for every configured connector. */

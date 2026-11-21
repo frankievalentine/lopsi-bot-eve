@@ -774,17 +774,32 @@ function IntegrationCard({
   readonly onChanged: () => void;
   readonly status: SettingsStatus;
 }) {
-  const { kind, serviceName, title } = integration;
+  const { kind, problem, serviceName, title } = integration;
   return (
     <div className="space-y-2 rounded-lg border p-3">
       <div className="flex items-start gap-3">
         <ServiceIcon integration={integration} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium">{title}</span>
+          <span className="flex items-center gap-2">
+            <span
+              aria-label={problem ? "Not working" : "Working"}
+              className={cn(
+                "size-1.5 shrink-0 rounded-full",
+                problem ? "bg-destructive" : "bg-online"
+              )}
+              role="img"
+            />
+            <span className="truncate text-sm font-medium">{title}</span>
+          </span>
           <span className="text-muted-foreground mt-0.5 block text-xs">
             {title === serviceName ? "" : `${serviceName} · `}
             {kind === "mcp" ? "MCP" : "API"}
           </span>
+          {problem ? (
+            <span className="text-destructive mt-1 block text-xs text-pretty">
+              {problem}
+            </span>
+          ) : null}
         </span>
       </div>
       <ChatRows
@@ -816,18 +831,7 @@ function IntegrationsSection({
     <>
       <section className="space-y-2">
         <div className="flex min-h-7 flex-wrap items-center justify-between gap-x-3 gap-y-1">
-          <div className="flex items-center gap-2.5">
-            <h3 className="text-sm font-medium">Connected Services</h3>
-            {connectors.ok ? (
-              <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
-                <span
-                  aria-hidden="true"
-                  className="bg-online size-1.5 rounded-full"
-                />
-                Connected
-              </span>
-            ) : null}
-          </div>
+          <h3 className="text-sm font-medium">Connected Services</h3>
           <span className="flex items-center gap-2">
             {onConnections ? (
               <Button onClick={onConnections} size="xs" variant="outline">
