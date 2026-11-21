@@ -10,7 +10,7 @@ import {
   newMemberFiles,
   readMemberConfig,
 } from "@/lib/config-changes";
-import { connectorCatalog } from "@/lib/connectors";
+import { connectors } from "@/lib/connectors";
 import { CrewSchema } from "@/lib/crew-core.mjs";
 import { currentAccount } from "@/lib/current-account";
 import {
@@ -140,10 +140,11 @@ export async function loadMemberConfig(
   if (
     (await requester()) === undefined ||
     target === undefined ||
-    configChangesUnavailable() !== undefined
+    (await configChangesUnavailable()) !== undefined
   ) {
     return {
-      error: configChangesUnavailable() ?? "Changes aren't available here.",
+      error:
+        (await configChangesUnavailable()) ?? "Changes aren't available here.",
       ok: false,
     };
   }
@@ -168,10 +169,11 @@ export async function proposeMemberEdit(
   if (
     who === undefined ||
     target === undefined ||
-    configChangesUnavailable() !== undefined
+    (await configChangesUnavailable()) !== undefined
   ) {
     return {
-      error: configChangesUnavailable() ?? "Changes aren't available here.",
+      error:
+        (await configChangesUnavailable()) ?? "Changes aren't available here.",
       ok: false,
     };
   }
@@ -221,10 +223,11 @@ export async function proposeNewMember(input: unknown): Promise<ChangeResult> {
   if (
     who === undefined ||
     target === undefined ||
-    configChangesUnavailable() !== undefined
+    (await configChangesUnavailable()) !== undefined
   ) {
     return {
-      error: configChangesUnavailable() ?? "Changes aren't available here.",
+      error:
+        (await configChangesUnavailable()) ?? "Changes aren't available here.",
       ok: false,
     };
   }
@@ -256,10 +259,11 @@ export async function pendingChanges(): Promise<
   if (
     (await requester()) === undefined ||
     target === undefined ||
-    configChangesUnavailable() !== undefined
+    (await configChangesUnavailable()) !== undefined
   ) {
     return {
-      error: configChangesUnavailable() ?? "Changes aren't available here.",
+      error:
+        (await configChangesUnavailable()) ?? "Changes aren't available here.",
       ok: false,
     };
   }
@@ -310,9 +314,10 @@ export async function connectorChoices(): Promise<
   if (typeof (await currentAccount()) === "string") {
     return [];
   }
-  return connectorCatalog().map(({ configured, id, name }) => ({
-    configured,
-    id,
-    name,
+  // crew.json names a connector by its connection name.
+  return (await connectors()).map(({ name, serviceName, title }) => ({
+    configured: true,
+    id: name,
+    name: title === serviceName ? title : `${serviceName} (${title})`,
   }));
 }

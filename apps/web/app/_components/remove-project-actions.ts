@@ -1,11 +1,8 @@
 "use server";
 
-import { getVercelOidcToken } from "@vercel/oidc";
-import { isConfigured } from "@/lib/channel-core.mjs";
-import channelCatalog from "@/lib/channels.json";
 import { currentAccount } from "@/lib/current-account";
 import { isDemo } from "@/lib/demo";
-import { targetRepository } from "@/lib/github";
+import { configChangesUnavailable, targetRepository } from "@/lib/github";
 import {
   planRemoval,
   type RemovalItem,
@@ -15,6 +12,7 @@ import {
   VercelCallError,
   vercelCaller,
 } from "@/lib/project-removal";
+import { deploymentTarget } from "@/lib/vercel-project";
 
 /** Something the app can't remove, for the person to do afterward. */
 export interface ManualStep {
@@ -24,21 +22,6 @@ export interface ManualStep {
 }
 
 const failure = (error: string) => ({ error, ok: false as const });
-
-/** This deployment's project and team. */
-async function deploymentTarget(): Promise<
-  { projectId: string; teamId: string } | undefined
-> {
-  const projectId = process.env.VERCEL_PROJECT_ID;
-  if (projectId === undefined) {
-    return;
-  }
-  const [, payload] = (await getVercelOidcToken()).split(".");
-  const { owner_id: teamId } = JSON.parse(
-    Buffer.from(payload ?? "", "base64url").toString()
-  ) as { owner_id?: string };
-  return teamId ? { projectId, teamId } : undefined;
-}
 
 /** Only someone signed in on a production deployment gets as far as the token. */
 async function allowed(): Promise<boolean> {
@@ -59,11 +42,11 @@ function explain(error: unknown): string {
 }
 
 /** What's outside Vercel's reach or its public API, from how this deployment is set up. */
-function manualSteps(plan: RemovalPlan): readonly ManualStep[] {
+function manualSteps(
+  plan: RemovalPlan,
+  github: boolean
+): readonly ManualStep[] {
   const repository = targetRepository();
-  const channels = channelCatalog.filter((entry) =>
-    isConfigured(entry.env.map((variable) => variable.name))
-  );
   const storage =
     "https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fstores&title=Go+to+Storage";
   return [
@@ -76,7 +59,7 @@ function manualSteps(plan: RemovalPlan): readonly ManualStep[] {
           },
         ]
       : []),
-    ...(process.env.GITHUB_CONNECTOR
+    ...(github
       ? [
           {
             hint: "The app that opened pull requests",
@@ -113,19 +96,15 @@ function manualSteps(plan: RemovalPlan): readonly ManualStep[] {
       href: storage,
       label: "Delete the Store",
     })),
-    ...(process.env.RESEND_API_KEY
+    ...(process.env.LOPSI_EMAIL_DOMAIN
       ? [
           {
-            hint: "Webhooks and API key, and the receiving domain if nothing else uses it",
-            href: "https://resend.com/webhooks",
+            hint: "Its API key, and the receiving domain if nothing else uses it",
+            href: "https://resend.com/api-keys",
             label: "Clean Up Resend",
           },
         ]
       : []),
-    ...channels.map((entry) => ({
-      hint: `In your ${entry.name} dashboard`,
-      label: `Remove the ${entry.name} Webhook`,
-    })),
   ];
 }
 
@@ -150,7 +129,8 @@ export async function previewRemoval(token: string): Promise<
       vercelCaller(token, target.teamId),
       target.projectId
     );
-    return { manual: manualSteps(plan), ok: true, plan };
+    const github = (await configChangesUnavailable()) === undefined;
+    return { manual: manualSteps(plan, github), ok: true, plan };
   } catch (error) {
     return failure(explain(error));
   }

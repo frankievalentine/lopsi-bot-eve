@@ -1,39 +1,39 @@
 /**
  * Email for the crew: each crew member answers `<member>@LOPSI_EMAIL_DOMAIN`
  * through the Resend channel (agents/<name>/agent/channels/resend.ts), and
- * only from senders you allow whose mail passes DMARC.
+ * only from senders Settings allows whose mail passes DMARC.
  *
- * Set up with `pnpm setup:email`: RESEND_API_KEY, LOPSI_EMAIL_DOMAIN,
- * LOPSI_EMAIL_SENDERS, one webhook signing secret per member
- * (RESEND_WEBHOOK_SECRET_<MEMBER>), and Upstash Redis (REDIS_URL or KV_URL)
- * for thread state.
+ * A Resend connector in Vercel Connect receives it: Settings has it send
+ * received email to app/api/email, which hands each one to the member it's
+ * addressed to, and sets LOPSI_EMAIL_DOMAIN. Thread state needs Upstash Redis
+ * (REDIS_URL or KV_URL).
  *
  * @packageDocumentation
  */
 
-import {
-  isConfigured,
-  memberAddress,
-  redisStateUrl,
-  webhookSecretVariable,
-} from "./channel-core.mjs";
+/** A member's email address. */
+export function memberAddress(memberId: string, domain: string): string {
+  return `${memberId}@${domain.trim().toLowerCase()}`;
+}
 
-/** A member's email address while email is set up for it; `undefined` while it's off. */
+/** Thread state's Redis URL, as the Upstash for Redis integration sets it. */
+export function redisStateUrl(): string | undefined {
+  return (process.env.REDIS_URL || process.env.KV_URL)?.trim() || undefined;
+}
+
+/** The domain the crew receives email at, once Settings has turned email on. */
+export function emailDomain(): string | undefined {
+  return process.env.LOPSI_EMAIL_DOMAIN?.trim().toLowerCase() || undefined;
+}
+
+/** A member's email address while email is on; `undefined` while it's off. */
 export function emailSetup(
   memberId: string
 ): { readonly address: string } | undefined {
-  const secret = webhookSecretVariable(memberId);
-  if (
-    !(
-      isConfigured(["RESEND_API_KEY", "LOPSI_EMAIL_DOMAIN", secret]) &&
-      redisStateUrl()
-    )
-  ) {
-    return;
-  }
-  return {
-    address: memberAddress(memberId, process.env.LOPSI_EMAIL_DOMAIN ?? ""),
-  };
+  const domain = emailDomain();
+  return domain && redisStateUrl()
+    ? { address: memberAddress(memberId, domain) }
+    : undefined;
 }
 
 const ANGLE_ADDRESS = /<(?<address>[^>]+)>/u;
@@ -50,21 +50,46 @@ function domainOf(address: string): string {
 }
 
 /**
- * Whether LOPSI_EMAIL_SENDERS allows this address: a comma-separated list of
- * addresses (`ana@example.com`) and whole domains (`@example.com`). Empty
- * allows nobody.
+ * Whether a sender list (apps/web/lib/allowed-senders.ts) allows this
+ * address: addresses (`ana@example.com`) and whole domains (`@example.com`).
+ * Empty allows nobody.
  */
-export function isAllowedSender(address: string): boolean {
+export function isAllowedSender(
+  address: string,
+  allowed: readonly string[]
+): boolean {
   const sender = address.trim().toLowerCase();
-  const allowed = (process.env.LOPSI_EMAIL_SENDERS ?? "")
-    .split(",")
-    .map((entry) => entry.trim().toLowerCase())
-    .filter(Boolean);
   return allowed.some((entry) =>
     entry.startsWith("@")
       ? domainOf(sender) === entry.slice(1)
       : sender === entry
   );
+}
+
+/**
+ * The crew members a Resend event is addressed to: `email.received` mail
+ * whose To or Cc has `<member>@<domain>`.
+ */
+export function addressedMembers(
+  payload: unknown,
+  domain: string,
+  memberIds: readonly string[]
+): string[] {
+  const event = payload as {
+    data?: { cc?: unknown; to?: unknown };
+    type?: unknown;
+  };
+  if (event?.type !== "email.received") {
+    return [];
+  }
+  const list = (value: unknown) =>
+    Array.isArray(value)
+      ? value.filter((entry): entry is string => typeof entry === "string")
+      : [];
+  const recipients = new Set(
+    [...list(event.data?.to), ...list(event.data?.cc)].map(bareAddress)
+  );
+  return memberIds.filter((id) => recipients.has(memberAddress(id, domain)));
 }
 
 const AUTHENTICATION_RESULTS = "authentication-results";

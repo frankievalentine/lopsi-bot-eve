@@ -1,8 +1,9 @@
 import { connect } from "@vercel/connect/eve";
 import { defineDynamic, defineMcpClientConnection } from "eve/connections";
 import {
-  configuredConnectors,
+  allowedFor,
   connectorApproval,
+  connectors,
 } from "../../../../apps/web/lib/connectors.js";
 import crew from "../../crew.json" with { type: "json" };
 
@@ -12,35 +13,35 @@ const allowed: readonly string[] | undefined = (
 ).connectors;
 
 /**
- * The services set up with `pnpm setup:connector` (apps/web/lib/connectors.json),
- * one MCP connection each, named by its id (`linear__search_issues`). A
- * connector that isn't set up doesn't exist for the model, so a starter
- * deployment never reaches for a service it can't use.
+ * One MCP connection for each MCP connector attached to this project in Vercel
+ * Connect (apps/web/lib/connectors.ts), named after it (`my-linear__search_issues`).
+ * Other connectors are API credentials, for tools/call_service.ts. A connector
+ * attached in Vercel is here within 30 seconds, without a redeploy.
  *
  * Each person authorizes their own account the first time the agent needs it
  * (a connect card in the chat). In starter mode everyone shares one identity,
  * and so one grant.
  */
-export default defineDynamic(() => {
-  const connectors = configuredConnectors().filter(
-    (connector) => allowed === undefined || allowed.includes(connector.id)
+export default defineDynamic(async () => {
+  const servers = allowedFor(await connectors(), allowed).filter(
+    (connector) => connector.kind === "mcp" && connector.url
   );
-  if (connectors.length === 0) {
+  if (servers.length === 0) {
     return null;
   }
   return Object.fromEntries(
-    connectors.map((connector) => [
-      connector.id,
+    servers.map((connector) => [
+      connector.name,
       defineMcpClientConnection({
-        approval: connectorApproval(connector),
+        approval: connectorApproval,
         auth: connect({
-          connector: connector.uid,
-          displayName: connector.name,
+          connector: connector.id,
+          displayName: connector.serviceName,
+          ...(connector.perPerson ? {} : { principalType: "app" as const }),
         }),
-        description: connector.description,
-        instanceKey: connector.uid,
-        url: connector.url,
-        ...(connector.tools ? { tools: connector.tools } : {}),
+        description: `${connector.serviceName} (${connector.title}), through its MCP server.`,
+        instanceKey: connector.id,
+        url: connector.url ?? "",
       }),
     ])
   );

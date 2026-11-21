@@ -37,7 +37,7 @@ export async function CrewPage({
     return access.page;
   }
   const { account } = access;
-  const { changes, connectors } = dashboardFeatures(account);
+  const { changes, connectors } = await dashboardFeatures(account);
   const history = await savedHistory(sessionId);
   return (
     <CrewApp

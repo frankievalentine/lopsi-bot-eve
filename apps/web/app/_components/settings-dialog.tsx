@@ -6,7 +6,8 @@ import {
   ExternalLinkIcon,
   GitPullRequestIcon,
   PencilIcon,
-  PlugIcon,
+  RefreshCwIcon,
+  XIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useEffect, useRef, useState } from "react";
@@ -18,12 +19,23 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AccessMode } from "@/lib/access";
 import type { MemberSetup, MemberSetupResult } from "@/lib/agent-info";
+import type { SenderList } from "@/lib/allowed-senders";
+import type { ConnectorsUnavailable } from "@/lib/connectors";
 import { CREW, type CrewMember } from "@/lib/crew";
 import { cn } from "@/lib/utils";
-import { loadSettings, type SettingsStatus } from "./settings-actions";
+import {
+  allowChat,
+  forgetDomain,
+  type Integration,
+  loadSettings,
+  type SettingsStatus,
+  saveAllowedSenders,
+  turnOnEmail,
+} from "./settings-actions";
 
 const ACCESS: Record<
   AccessMode | "demo",
@@ -39,8 +51,8 @@ const ACCESS: Record<
   },
   open: { hint: "Local development has no sign-in.", label: "Open" },
   password: {
-    hint: "One shared password; everyone shares every chat.",
-    label: "Starter",
+    hint: "Everyone signs in with the same password and can open each other's chats.",
+    label: "Shared Password",
   },
   "too-short": {
     hint: "The password is under 16 characters, so nobody can sign in.",
@@ -77,14 +89,17 @@ const USAGE_LINKS = [
   },
 ] as const;
 
-const CONNECT_LINK =
-  "https://vercel.com/d?to=/%5Bteam%5D/~/connect&title=Go+to+Connect";
+/** This project's Connect page, where connectors are created and attached. */
+const PROJECT_CONNECT_LINK =
+  "https://vercel.com/d?to=%2F%5Bteam%5D%2F%5Bproject%5D%2Fconnect&title=Go+to+Connect";
+
+const TOKENS_LINK = "https://vercel.com/account/tokens";
+
+const ENV_LINK =
+  "https://vercel.com/d?to=%2F%5Bteam%5D%2F%5Bproject%5D%2Fsettings%2Fenvironment-variables&title=Environment+Variables";
 
 /** Crew members per page in the Crew section's picker. */
 const CREW_PAGE_SIZE = 4;
-
-/** Shown once, under Channels: its connector is how the crew starts an email. */
-const RESEND = "resend";
 
 const TRAILING_PERIOD = /\.$/u;
 
@@ -198,8 +213,15 @@ function GeneralSection({
             <External href={`${GUIDE}/access.md`}>Guide</External>
           )}
         </Row>
-        <Row label="Chat History">
-          {status.history ? "On the Server" : "In Each Browser"}
+        <Row
+          hint={
+            status.history
+              ? "Your chats appear on any device you sign in on."
+              : "Your list of chats isn't saved anywhere else, so it won't appear on other devices."
+          }
+          label="Chat History"
+        >
+          {status.history ? "Saved to Your Account" : "This Browser Only"}
         </Row>
         <VersionRow status={status} />
         <PullRequestsRow
@@ -289,159 +311,588 @@ function PullRequestsRow({
   );
 }
 
-interface Integration {
-  readonly active: boolean;
-  readonly description: string;
-  /** Where to set it up. */
-  readonly guide: string;
-  readonly id: string;
-  readonly name: string;
+/** What the status card says when Lopsi can't list connectors, and whether a new token fixes it. */
+const UNAVAILABLE: Record<
+  ConnectorsUnavailable,
+  { readonly hint: string; readonly token: boolean }
+> = {
+  "no-project": {
+    hint: "Run `vercel link` and `vercel env pull` to connect locally.",
+    token: false,
+  },
+  "no-token": {
+    hint: "Create a Vercel token to see your connectors.",
+    token: true,
+  },
+  refused: {
+    hint: "The token expired or can't reach this team. Create a new one.",
+    token: true,
+  },
+};
+
+function LinkButton({
+  children,
+  href,
+  variant = "outline",
+}: {
+  readonly children: ReactNode;
+  readonly href: string;
+  readonly variant?: "default" | "outline";
+}) {
+  return (
+    <Button
+      nativeButton={false}
+      render={<a href={href} rel="noreferrer" target="_blank" />}
+      size="xs"
+      variant={variant}
+    >
+      {children}
+      <ExternalLinkIcon aria-hidden="true" className="size-3" />
+    </Button>
+  );
 }
 
-function IntegrationCard({
-  integration,
+/** Why Lopsi can't see the project's connectors, and how to fix it. */
+function ConnectProblem({
+  reason,
 }: {
-  readonly integration: Integration;
+  readonly reason: ConnectorsUnavailable;
 }) {
-  const { active, description, guide, name } = integration;
-  const body = (
-    <>
+  const problem = UNAVAILABLE[reason];
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border px-3.5 py-3">
       <span
         aria-hidden="true"
-        className="bg-muted text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-md text-xs font-medium"
-      >
-        {name.charAt(0)}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center justify-between gap-2">
-          <span className="truncate text-sm font-medium">{name}</span>
-          {active ? (
-            <Status active={true} />
-          ) : (
-            <span className="text-muted-foreground shrink-0 text-xs">
-              <span className="group-hover/card:hidden group-focus-visible/card:hidden">
-                Off
-              </span>
-              <span className="text-foreground hidden items-center gap-1 group-hover/card:inline-flex group-focus-visible/card:inline-flex">
-                Set Up
-                <ExternalLinkIcon aria-hidden="true" className="size-3" />
-              </span>
-            </span>
-          )}
-        </span>
-        <span className="text-muted-foreground mt-0.5 line-clamp-2 text-xs text-pretty">
-          {description}
-        </span>
-      </span>
-    </>
-  );
-  const frame = "flex items-start gap-3 rounded-lg border p-3 text-left";
-  return active ? (
-    <div className={frame}>{body}</div>
-  ) : (
-    <a
-      aria-label={`Set Up ${name}`}
-      className={cn(
-        frame,
-        "group/card hover:bg-accent focus-visible:ring-ring/50 transition-colors outline-none focus-visible:ring-3"
-      )}
-      href={guide}
-      rel="noreferrer"
-      target="_blank"
-    >
-      {body}
-    </a>
+        className="bg-destructive size-2 shrink-0 rounded-full"
+      />
+      <div className="min-w-40 flex-1">
+        <p className="text-sm font-medium">Not Connected</p>
+        <p className="text-muted-foreground text-xs text-pretty">
+          {problem.hint}
+        </p>
+      </div>
+      {problem.token ? (
+        <div className="flex shrink-0 gap-2">
+          <LinkButton href={TOKENS_LINK} variant="default">
+            Create Token
+          </LinkButton>
+          <LinkButton href={ENV_LINK}>Set Token</LinkButton>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
-function IntegrationGroup({
-  action,
-  integrations,
-  title,
+function ServiceIcon({ integration }: { readonly integration: Integration }) {
+  return integration.icon ? (
+    <span className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-md">
+      {/* biome-ignore lint/performance/noImgElement: Vercel Connect's own icon, as a data URI. */}
+      <img
+        alt=""
+        className="size-4.5"
+        height={18}
+        src={integration.icon}
+        width={18}
+      />
+    </span>
+  ) : (
+    <span
+      aria-hidden="true"
+      className="bg-muted text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-md text-xs font-medium"
+    >
+      {integration.serviceName.charAt(0)}
+    </span>
+  );
+}
+
+const CHAT_NAMES = { slack: "Slack", telegram: "Telegram" } as const;
+
+function ChatRows({
+  integration,
+  onChanged,
+  senders,
 }: {
-  readonly action?: ReactNode;
-  readonly integrations: readonly Integration[];
-  readonly title: string;
+  readonly integration: Integration;
+  readonly onChanged: () => void;
+  readonly senders: SettingsStatus["senders"];
 }) {
-  const active = integrations.filter((entry) => entry.active);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const { chat } = integration;
+  if (chat === undefined || chat.members.length === 0) {
+    return null;
+  }
+  const turnOn = (memberId: string) => {
+    setBusy(memberId);
+    setError(null);
+    allowChat(integration.id, memberId)
+      .then((result) => {
+        if (result.ok) {
+          onChanged();
+        } else {
+          setError(result.error ?? "Couldn't turn it on.");
+        }
+      })
+      .catch(() => setError("Couldn't turn it on."))
+      .finally(() => setBusy(null));
+  };
   return (
-    <section className="space-y-2">
-      <div className="flex min-h-7 flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <h3 className="text-sm font-medium">
-          {title}
-          <span className="text-muted-foreground ml-2 text-xs font-normal">
-            {active.length} of {integrations.length} active
+    <div className="space-y-1.5">
+      {chat.members.map((member) => (
+        <div
+          className="flex items-center justify-between gap-2 text-xs"
+          key={member.id}
+        >
+          <span className="text-muted-foreground">
+            Chat with {member.name} in {CHAT_NAMES[chat.service]}
           </span>
-        </h3>
-        {action}
+          {member.on ? (
+            <Status active={true} />
+          ) : (
+            <Button
+              disabled={busy !== null}
+              onClick={() => turnOn(member.id)}
+              size="xs"
+              variant="outline"
+            >
+              {busy === member.id ? "Turning On…" : "Turn On"}
+            </Button>
+          )}
+        </div>
+      ))}
+      {chat.service === "telegram" ? (
+        <SendersEditor
+          list="telegram"
+          onChanged={onChanged}
+          senders={senders}
+        />
+      ) : null}
+      {error ? (
+        <p className="text-destructive text-xs" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function DomainRows({
+  integration,
+  onChanged,
+}: {
+  readonly integration: Integration;
+  readonly onChanged: () => void;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const { domains } = integration;
+  if (domains === undefined) {
+    return null;
+  }
+  const forget = (host: string) => {
+    setBusy(host);
+    forgetDomain(integration.id, host)
+      .then(onChanged)
+      .catch(() => undefined)
+      .finally(() => setBusy(null));
+  };
+  return (
+    <div className="space-y-1.5 text-xs">
+      {domains.length === 0 ? (
+        <p className="text-muted-foreground text-pretty">
+          The crew asks before its credential goes to any host.
+        </p>
+      ) : (
+        <>
+          <p className="text-muted-foreground">Approved hosts</p>
+          <ul className="flex flex-wrap gap-1.5">
+            {domains.map((host) => (
+              <li
+                className="bg-muted inline-flex items-center gap-1 rounded-md py-0.5 pr-0.5 pl-2 font-mono"
+                key={host}
+              >
+                {host}
+                <Button
+                  aria-label={`Ask Again Before Using ${host}`}
+                  disabled={busy !== null}
+                  onClick={() => forget(host)}
+                  size="icon-xs"
+                  variant="ghost"
+                >
+                  <XIcon className="size-3" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  );
+}
+
+const SENDER_LISTS = {
+  email: {
+    empty: "Nobody yet: email from anyone is dropped.",
+    label: "Who may email the crew",
+    placeholder: "ana@example.com or @example.com",
+  },
+  telegram: {
+    empty: "Nobody yet: messages from anyone are dropped.",
+    label: "Who may message the bot",
+    placeholder: "Username or user id",
+  },
+} as const;
+
+/** Who may write to the crew from outside the dashboard, edited in place. */
+function SendersEditor({
+  list,
+  onChanged,
+  senders,
+}: {
+  readonly list: SenderList;
+  readonly onChanged: () => void;
+  readonly senders: SettingsStatus["senders"];
+}) {
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { fixed, saved } = senders[list];
+  const copy = SENDER_LISTS[list];
+  const save = (entries: readonly string[], after?: () => void) => {
+    setBusy(true);
+    setError(null);
+    saveAllowedSenders(list, entries)
+      .then((result) => {
+        if (result.ok) {
+          after?.();
+          onChanged();
+        } else {
+          setError(result.error ?? "Couldn't save.");
+        }
+      })
+      .catch(() => setError("Couldn't save."))
+      .finally(() => setBusy(false));
+  };
+  const add = () => {
+    const entries = draft
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+    if (entries.length > 0) {
+      save([...saved, ...entries], () => setDraft(""));
+    }
+  };
+  const all = [...saved, ...fixed.filter((entry) => !saved.includes(entry))];
+  return (
+    <div className="space-y-1.5 text-xs">
+      <p className="text-muted-foreground">{copy.label}</p>
+      {all.length === 0 ? (
+        <p className="text-muted-foreground text-pretty">{copy.empty}</p>
+      ) : (
+        <ul className="flex flex-wrap gap-1.5">
+          {all.map((entry) => (
+            <li
+              className="bg-muted inline-flex items-center gap-1 rounded-md py-0.5 pr-0.5 pl-2 font-mono"
+              key={entry}
+            >
+              {entry}
+              {saved.includes(entry) && senders.editable ? (
+                <Button
+                  aria-label={`Remove ${entry}`}
+                  disabled={busy}
+                  onClick={() =>
+                    save(saved.filter((existing) => existing !== entry))
+                  }
+                  size="icon-xs"
+                  variant="ghost"
+                >
+                  <XIcon className="size-3" />
+                </Button>
+              ) : null}
+              {saved.includes(entry) ? null : (
+                <span className="text-muted-foreground px-1">env</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {senders.editable ? (
+        <form
+          className="flex gap-1.5"
+          onSubmit={(event) => {
+            event.preventDefault();
+            add();
+          }}
+        >
+          <Input
+            aria-label={copy.label}
+            className="h-7 text-xs"
+            disabled={busy}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder={copy.placeholder}
+            value={draft}
+          />
+          <Button disabled={busy || !draft.trim()} size="xs" type="submit">
+            Add
+          </Button>
+        </form>
+      ) : (
+        <p className="text-muted-foreground text-pretty">
+          Editing this needs the project's Blob store.
+        </p>
+      )}
+      {error ? (
+        <p className="text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+const UPSTASH_LINK = "https://vercel.com/marketplace/upstash";
+
+/** Receiving the crew's email through a Resend connector. */
+function EmailRows({
+  integration,
+  onChanged,
+  status,
+}: {
+  readonly integration: Integration;
+  readonly onChanged: () => void;
+  readonly status: SettingsStatus;
+}) {
+  const [domain, setDomain] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { email } = integration;
+  if (email === undefined) {
+    return null;
+  }
+  const turnOn = () => {
+    setBusy(true);
+    setError(null);
+    turnOnEmail(integration.id, domain || (email.suggestions[0] ?? ""))
+      .then((result) => {
+        if (result.ok) {
+          onChanged();
+        } else {
+          setError(result.error ?? "Couldn't turn it on.");
+        }
+      })
+      .catch(() => setError("Couldn't turn it on."))
+      .finally(() => setBusy(false));
+  };
+  const addresses = Object.values(status.email);
+  let body: ReactNode;
+  if (!email.redis) {
+    body = (
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-muted-foreground text-pretty">
+          Receiving email needs Upstash for Redis, for its threads.
+        </span>
+        <LinkButton href={UPSTASH_LINK}>Add Upstash</LinkButton>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {[...active, ...integrations.filter((entry) => !entry.active)].map(
-          (entry) => (
-            <IntegrationCard integration={entry} key={entry.id} />
-          )
-        )}
+    );
+  } else if (email.domain) {
+    body = (
+      <>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-muted-foreground">Receives email</span>
+          <Status active={true} />
+        </div>
+        {addresses.length > 0 ? (
+          <p className="font-mono text-pretty">{addresses.join(", ")}</p>
+        ) : null}
+      </>
+    );
+  } else if (email.pending) {
+    body = (
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-muted-foreground text-pretty">
+          Turning on: production is redeploying. Refresh in a few minutes.
+        </span>
       </div>
-    </section>
+    );
+  } else {
+    body = (
+      <form
+        className="space-y-1.5"
+        onSubmit={(event) => {
+          event.preventDefault();
+          turnOn();
+        }}
+      >
+        <span className="text-muted-foreground block text-pretty">
+          Let people email the crew at {"<member>@"}your domain. Turn on
+          receiving for the domain in Resend first.
+        </span>
+        <div className="flex gap-1.5">
+          <Input
+            aria-label="Domain to receive email at"
+            className="h-7 text-xs"
+            disabled={busy}
+            list={`domains-${integration.id}`}
+            onChange={(event) => setDomain(event.target.value)}
+            placeholder={email.suggestions[0] ?? "mail.example.com"}
+            value={domain}
+          />
+          <datalist id={`domains-${integration.id}`}>
+            {email.suggestions.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
+          <Button
+            disabled={busy || !(domain || email.suggestions[0])}
+            size="xs"
+            type="submit"
+          >
+            {busy ? "Turning On…" : "Turn On"}
+          </Button>
+        </div>
+      </form>
+    );
+  }
+  return (
+    <div className="space-y-2 text-xs">
+      {body}
+      {email.domain || email.pending ? (
+        <SendersEditor
+          list="email"
+          onChanged={onChanged}
+          senders={status.senders}
+        />
+      ) : null}
+      {error ? (
+        <p className="text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** Whether a service has settings under its row: chat, email or approved hosts. */
+function hasDetails({ chat, domains, email }: Integration): boolean {
+  return (
+    (chat !== undefined && chat.members.length > 0) ||
+    email !== undefined ||
+    domains !== undefined
+  );
+}
+
+function IntegrationRow({
+  integration,
+  onChanged,
+  status,
+}: {
+  readonly integration: Integration;
+  readonly onChanged: () => void;
+  readonly status: SettingsStatus;
+}) {
+  const { kind, problem, serviceName, title } = integration;
+  return (
+    <li className="px-3.5 py-3">
+      <div className="flex items-center gap-3">
+        <ServiceIcon integration={integration} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm">{title}</span>
+          <span className="text-muted-foreground block text-xs">
+            {title === serviceName ? "" : `${serviceName} · `}
+            {kind === "mcp" ? "MCP" : "API"}
+          </span>
+        </span>
+        <span
+          className={cn(
+            "inline-flex shrink-0 items-center gap-1.5 text-xs",
+            problem ? "text-destructive" : "text-muted-foreground"
+          )}
+        >
+          <span
+            aria-hidden="true"
+            className={cn(
+              "size-1.5 rounded-full",
+              problem ? "bg-destructive" : "bg-online"
+            )}
+          />
+          {problem ?? "Connected"}
+        </span>
+      </div>
+      {hasDetails(integration) ? (
+        <div className="mt-3 space-y-3 sm:pl-11">
+          <ChatRows
+            integration={integration}
+            onChanged={onChanged}
+            senders={status.senders}
+          />
+          <EmailRows
+            integration={integration}
+            onChanged={onChanged}
+            status={status}
+          />
+          <DomainRows integration={integration} onChanged={onChanged} />
+        </div>
+      ) : null}
+    </li>
   );
 }
 
 function IntegrationsSection({
-  onConnections,
+  onChanged,
   status,
 }: {
-  readonly onConnections: (() => void) | undefined;
+  readonly onChanged: () => void;
   readonly status: SettingsStatus;
 }) {
+  const { connectors } = status;
   return (
     <>
-      <IntegrationGroup
-        action={
-          <span className="flex items-center gap-3">
-            <External href={CONNECT_LINK}>Vercel Connect</External>
-            {onConnections ? (
-              <Button onClick={onConnections} size="xs" variant="outline">
-                <PlugIcon className="size-3" />
-                Your Connections
-              </Button>
-            ) : null}
+      <section className="space-y-2">
+        <div className="flex min-h-7 flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <h3 className="text-sm font-medium">Connected Services</h3>
+          <span className="flex items-center gap-2">
+            <Button onClick={onChanged} size="xs" variant="ghost">
+              <RefreshCwIcon className="size-3" />
+              Refresh
+            </Button>
+            <LinkButton href={PROJECT_CONNECT_LINK} variant="default">
+              Add Connectors
+            </LinkButton>
           </span>
-        }
-        integrations={status.catalog
-          .filter((entry) => entry.id !== RESEND)
-          .map((entry) => ({
-            active: entry.configured,
-            description: entry.description,
-            guide: `${GUIDE}/integrations.md#connectors`,
-            id: entry.id,
-            name: entry.name,
-          }))}
-        title="Connectors"
-      />
-      <IntegrationGroup
-        integrations={[
-          {
-            // Either half counts: people emailing the crew, or the crew sending email.
-            active:
-              Object.keys(status.email).length > 0 ||
-              status.catalog.some(
-                (entry) => entry.id === RESEND && entry.configured
-              ),
-            description: "Email the crew, and have the crew send email.",
-            guide: `${GUIDE}/integrations.md#email`,
-            id: "email",
-            name: "Resend",
-          },
-          ...status.channels.map((entry) => ({
-            active: entry.configured,
-            description: entry.description,
-            guide: `${GUIDE}/integrations.md#channels`,
-            id: entry.id,
-            name: entry.name,
-          })),
-        ]}
-        title="Channels"
-      />
+        </div>
+        {connectors.ok ? null : <ConnectProblem reason={connectors.reason} />}
+        {connectors.ok && connectors.list.length === 0 ? (
+          <Group>
+            <Row
+              hint="Add any service from Vercel Connect (Slack, Google, Stripe, Linear, …) and attach it to this project. It shows up here within a minute; refresh to check."
+              label="Nothing connected yet"
+            />
+          </Group>
+        ) : null}
+        {connectors.ok && connectors.list.length > 0 ? (
+          <ul className="divide-y rounded-lg border">
+            {connectors.list.map((integration) => (
+              <IntegrationRow
+                integration={integration}
+                key={integration.id}
+                onChanged={onChanged}
+                status={status}
+              />
+            ))}
+          </ul>
+        ) : null}
+      </section>
+      {connectors.ok &&
+      !connectors.list.some((integration) => integration.email) ? (
+        <Group title="Receive Email">
+          <Row
+            hint="Add a Resend connector to let people email the crew."
+            label="Resend"
+          >
+            <Status active={false} />
+            <External href={`${GUIDE}/integrations.md#email`}>Guide</External>
+          </Row>
+        </Group>
+      ) : null}
     </>
   );
 }
@@ -472,12 +923,16 @@ function UsageSection({ status }: { readonly status: SettingsStatus }) {
 
 /** A member's setup that Edit doesn't cover, from its deployed agent. */
 function SetupGroups({
-  catalog,
+  connectors,
   setup,
 }: {
-  readonly catalog: SettingsStatus["catalog"];
+  readonly connectors: SettingsStatus["connectors"];
   readonly setup: MemberSetup;
 }) {
+  const titleOf = (name: string) =>
+    (connectors.ok
+      ? connectors.list.find((entry) => entry.name === name)?.title
+      : undefined) ?? name;
   const names = (list: readonly string[]) =>
     list.length > 0 ? list.join(", ") : "None";
   return (
@@ -485,13 +940,7 @@ function SetupGroups({
       <Group title="Services">
         {setup.connections.length > 0 ? (
           setup.connections.map((connection) => (
-            <Row
-              key={connection.name}
-              label={
-                catalog.find((entry) => entry.id === connection.name)?.name ??
-                connection.name
-              }
-            >
+            <Row key={connection.name} label={titleOf(connection.name)}>
               <span className="text-xs">
                 {connection.approval ? "Asks First" : "Runs Directly"}
               </span>
@@ -519,20 +968,21 @@ function SetupGroups({
 
 function MemberChannels({
   member,
-  result,
   status,
 }: {
   readonly member: CrewMember;
-  readonly result: MemberSetupResult | undefined;
   readonly status: SettingsStatus;
 }) {
   const email = status.email[member.id];
-  // A member's channel code exists whether or not it's set up, so its route
-  // alone doesn't mean it's on: only the ones set up count.
-  const routes = result?.ok ? result.setup.channels : [];
-  const active = status.channels.filter(
-    (entry) => entry.configured && routes.includes(entry.id)
-  );
+  const chats = status.connectors.ok
+    ? status.connectors.list.flatMap((integration) =>
+        integration.chat?.members.some(
+          (entry) => entry.id === member.id && entry.on
+        )
+          ? [integration]
+          : []
+      )
+    : [];
   return (
     <Group title="Channels">
       <Row label="Web Chat">
@@ -541,8 +991,12 @@ function MemberChannels({
       <Row hint={email} label="Resend">
         <Status active={email !== undefined} />
       </Row>
-      {active.map((entry) => (
-        <Row key={entry.id} label={entry.name}>
+      {chats.map((integration) => (
+        <Row
+          hint={integration.title}
+          key={integration.id}
+          label={integration.serviceName}
+        >
           <Status active={true} />
         </Row>
       ))}
@@ -577,6 +1031,7 @@ function MemberDetail({
           ) : null}
         </div>
         <Button
+          nativeButton={false}
           render={
             <Link
               href={`/c/${encodeURIComponent(member.id)}`}
@@ -595,9 +1050,9 @@ function MemberDetail({
           </Button>
         ) : null}
       </div>
-      <MemberChannels member={member} result={result} status={status} />
+      <MemberChannels member={member} status={status} />
       {result?.ok ? (
-        <SetupGroups catalog={status.catalog} setup={result.setup} />
+        <SetupGroups connectors={status.connectors} setup={result.setup} />
       ) : (
         <Group>
           <Row
@@ -720,15 +1175,19 @@ function CrewSection({
 
 type Loaded = Awaited<ReturnType<typeof loadSettings>>;
 
-/** Loads the settings each time the dialog opens. */
-function useSettings(open: boolean): Loaded | null {
+/** Loads the settings each time the dialog opens, and again on `reload`. */
+function useSettings(open: boolean): [Loaded | null, () => void] {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
+  const [version, setVersion] = useState(0);
   useEffect(() => {
     if (!open) {
       return;
     }
     let current = true;
-    setLoaded(null);
+    // A reload keeps what's shown until the new settings arrive.
+    if (version === 0) {
+      setLoaded(null);
+    }
     loadSettings()
       .then((result) => current && setLoaded(result))
       .catch(
@@ -738,8 +1197,13 @@ function useSettings(open: boolean): Loaded | null {
     return () => {
       current = false;
     };
+  }, [open, version]);
+  useEffect(() => {
+    if (!open) {
+      setVersion(0);
+    }
   }, [open]);
-  return loaded;
+  return [loaded, () => setVersion((count) => count + 1)];
 }
 
 const SECTIONS = [
@@ -755,7 +1219,6 @@ const SECTIONS = [
  * callbacks; Settings closes first.
  */
 export function SettingsDialog({
-  onConnections,
   onEdit,
   onOpenChange,
   onPendingChanges,
@@ -763,8 +1226,6 @@ export function SettingsDialog({
   open,
   pendingCount,
 }: {
-  /** Opens Connections; absent when no connector is set up. */
-  readonly onConnections?: (() => void) | undefined;
   /** Opens a member's Edit; absent where changes aren't possible. */
   readonly onEdit?: ((memberId: string) => void) | undefined;
   readonly onOpenChange: (open: boolean) => void;
@@ -775,7 +1236,7 @@ export function SettingsDialog({
   readonly open: boolean;
   readonly pendingCount: number | null;
 }) {
-  const loaded = useSettings(open);
+  const [loaded, reload] = useSettings(open);
   // Focus the dialog, not its first section: a ring there reads as a selection.
   const popup = useRef<HTMLDivElement>(null);
   const then = (action: (() => void) | undefined) =>
@@ -841,7 +1302,7 @@ export function SettingsDialog({
               {panel(
                 "integrations",
                 <IntegrationsSection
-                  onConnections={then(onConnections)}
+                  onChanged={reload}
                   status={loaded.status}
                 />
               )}
