@@ -12,7 +12,6 @@
  * @packageDocumentation
  */
 
-import type { ConnectionToolAnnotations } from "eve/tools/approval";
 import { deploymentTarget, VercelApiError, vercelApi } from "./vercel-project";
 
 /** How long a listing is reused, so a connector attached in Vercel shows up within this. */
@@ -356,25 +355,6 @@ export function allowedFor(
   return allowed === undefined
     ? list
     : list.filter((connector) => allowed.includes(connector.name));
-}
-
-/**
- * An MCP connector's approval policy (agents/<name>/agent/connections/services.ts):
- * read-only tools run; everything else waits for a person, including tools the
- * server says nothing about and ones it calls both read-only and destructive.
- * Annotations are the server's own hints.
- */
-export function connectorApproval({
-  toolAnnotations,
-}: {
-  readonly toolAnnotations?: ConnectionToolAnnotations;
-}): "user-approval" | "not-applicable" {
-  // A tool that also claims to be destructive contradicts itself; ask. MCP
-  // defaults destructiveHint to true, so only an explicit true counts.
-  const readOnly =
-    toolAnnotations?.readOnlyHint === true &&
-    toolAnnotations.destructiveHint !== true;
-  return readOnly ? "not-applicable" : "user-approval";
 }
 
 /** The parts of a caller Vercel Connect keys a person's grant by. */

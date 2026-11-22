@@ -2,6 +2,11 @@ import { connect } from "@vercel/connect/eve";
 import { defineDynamic, defineTool } from "eve/tools";
 import { z } from "zod";
 import {
+  approvalModeOf,
+  changeApproval,
+  serviceCallKind,
+} from "../../../../apps/web/lib/approval-mode.js";
+import {
   approveDomain,
   approvedDomains,
 } from "../../../../apps/web/lib/connector-domains.js";
@@ -16,6 +21,9 @@ import crew from "../../crew.json" with { type: "json" };
 const allowed: readonly string[] | undefined = (
   crew as { connectors?: string[] }
 ).connectors;
+
+/** How this member asks before a change to an approved website (crew.json `approvals`). */
+const changes = changeApproval(approvalModeOf(crew));
 
 /** Where the credential goes in the URL, for APIs that take it in the path (Telegram). */
 const TOKEN = "{token}";
@@ -127,19 +135,29 @@ export default defineDynamic(async () => {
         const connector = byName.get(call.service);
         return `${call.method} ${call.url.replaceAll(TOKEN, "…")} with ${connector?.serviceName ?? call.service}'s credential?`;
       },
-      async request({ toolInput }) {
-        const call = toolInput as Input | undefined;
+      async request(ctx) {
+        const call = ctx.toolInput as Input | undefined;
         const connector = call ? byName.get(call.service) : undefined;
         const host = call ? hostOf(call.url) : undefined;
         if (!(call && connector && host)) {
           // execute() refuses it with what to fix.
           return "not-applicable";
         }
-        if (call.method !== "GET") {
-          return "user-approval";
-        }
         const approved = await approvedDomains(connector.id);
-        return approved.includes(host) ? "not-applicable" : "user-approval";
+        switch (
+          serviceCallKind({
+            approvedWebsite: approved.includes(host),
+            method: call.method,
+          })
+        ) {
+          // Whatever the mode: only a person can send a credential somewhere new.
+          case "new-website":
+            return "user-approval";
+          case "read":
+            return "not-applicable";
+          default:
+            return changes(ctx);
+        }
       },
     },
     description: describe(services),

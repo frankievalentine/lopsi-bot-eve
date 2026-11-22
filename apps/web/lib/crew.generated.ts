@@ -9,6 +9,8 @@ export interface CrewMember {
   readonly name: string;
   readonly role: string;
   readonly suggestions: readonly string[];
+  /** When it asks before changing things in connected services; absent is "always". */
+  readonly approvals?: "always" | "once" | "auto" | "never";
 }
 
 export const CREW: readonly CrewMember[] = [

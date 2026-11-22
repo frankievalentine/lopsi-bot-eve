@@ -6,7 +6,6 @@ import {
   allowedFor,
   type ConnectorRecord,
   chatPath,
-  connectorApproval,
   toConnectors,
   unavailableReason,
 } from "./connectors";
@@ -25,26 +24,6 @@ function record(overrides: Partial<ConnectorRecord>): ConnectorRecord {
     ...overrides,
   };
 }
-
-describe("connectorApproval", () => {
-  it("runs a tool the server marks read-only", () => {
-    expect(connectorApproval({ toolAnnotations: { readOnlyHint: true } })).toBe(
-      "not-applicable"
-    );
-  });
-
-  it.each([
-    ["no annotations", undefined],
-    ["no readOnlyHint", { title: "Delete" }],
-    ["readOnlyHint false", { readOnlyHint: false }],
-    [
-      "readOnlyHint and destructiveHint",
-      { destructiveHint: true, readOnlyHint: true },
-    ],
-  ])("asks for a tool with %s", (_case, toolAnnotations) => {
-    expect(connectorApproval({ toolAnnotations })).toBe("user-approval");
-  });
-});
 
 describe("toConnectors", () => {
   it("makes an MCP connector from its server URL", () => {
