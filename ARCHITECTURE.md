@@ -45,8 +45,10 @@ apps/
         crew-page.tsx       # server: access check, then the dashboard or a sign-in
         crew-app.tsx        # the shell: crew list beside the chat; phones one at a time
         connections-dialog.tsx, connections-actions.ts   # Connections: status and disconnect
-        member-config-dialog.tsx, pending-changes-dialog.tsx, config-actions.ts   # changes by pull request
-        new-member-wizard.tsx, member-dialog-parts.tsx   # New crew member: role, name, model, instructions, access, review
+        pending-changes-dialog.tsx, config-actions.ts   # changes by pull request
+        new-member-wizard.tsx   # New crew member: role, name, model, instructions, access, review
+        edit-member-dialog.tsx  # Edit crew member: sections, changed dots, before/after review
+        member-fields.tsx, member-dialog-parts.tsx   # what both share: model, approval, services and tools pickers
         crew-list.tsx       # sidebar and phone list (ported from Lopsi Bot)
         crew-chat.tsx       # one chat on useEveAgent: header, messages, composer
         computer-panel.tsx  # the chat's sandbox: commands and files, from its tool calls
@@ -81,7 +83,8 @@ apps/
       connectors.ts         # the connectors attached in Vercel Connect (VERCEL_TOKEN), chat routing, grant subjects
       approval-mode.ts      # crew.json `approvals` as eve approval policies for services (always, once, auto, never)
       approval-labels.ts    # how the dashboard names those modes
-      crew-presets.ts       # the New crew member wizard's roles: suggested model, prompts, instructions draft
+      crew-presets.ts       # crew roles: suggested model, prompts, instructions draft (New, and Edit by look)
+      member-edit.ts        # the Edit form: config to fields and back, changes and their files
       connector-domains.ts  # hosts each API connector's credential may go to (private Blob)
       allowed-senders.ts    # who may email the crew or message its Telegram bot, edited in Settings (private Blob)
       email.ts              # email addresses, Redis for threads, the DMARC check

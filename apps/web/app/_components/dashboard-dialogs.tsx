@@ -13,8 +13,8 @@ import {
 const ConnectionsDialog = dynamic(() =>
   import("./connections-dialog").then((module) => module.ConnectionsDialog)
 );
-const MemberConfigDialog = dynamic(() =>
-  import("./member-config-dialog").then((module) => module.MemberConfigDialog)
+const EditMemberDialog = dynamic(() =>
+  import("./edit-member-dialog").then((module) => module.EditMemberDialog)
 );
 const NewMemberWizard = dynamic(() =>
   import("./new-member-wizard").then((module) => module.NewMemberWizard)
@@ -63,6 +63,8 @@ export function useDashboardDialogs({
 }): { actions: DashboardDialogActions; dialogs: ReactElement } {
   const [connectionsOpen, setConnectionsOpen] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
+  // Kept while the dialog animates closed, so it doesn't reload as nobody.
+  const [lastEdited, setLastEdited] = useState("");
   const [newOpen, setNewOpen] = useState(false);
   const [pendingOpen, setPendingOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -84,7 +86,10 @@ export function useDashboardDialogs({
       : {}),
     ...(canChange
       ? {
-          openEdit: (memberId: string) => setEditing(memberId),
+          openEdit: (memberId: string) => {
+            setLastEdited(memberId);
+            setEditing(memberId);
+          },
           openNewMember: () => setNewOpen(true),
           openPendingChanges: () => setPendingOpen(true),
         }
@@ -117,8 +122,8 @@ export function useDashboardDialogs({
       {canChange ? (
         <>
           {editOpened ? (
-            <MemberConfigDialog
-              mode={{ kind: "edit", memberId: editing ?? "" }}
+            <EditMemberDialog
+              memberId={editing ?? lastEdited}
               onOpenChange={(next) => !next && setEditing(null)}
               onPullRequest={pending.refresh}
               open={editing !== null}
