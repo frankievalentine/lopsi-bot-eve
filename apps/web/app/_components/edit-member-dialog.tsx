@@ -597,12 +597,40 @@ function DesktopSections({
   const [active, setActive] = useState<SectionId>("profile");
   const [advanced, setAdvanced] = useState(false);
   const changed = new Set(changes.map((change) => change.section));
+  // A section picked in the list stays current while the form scrolls to it,
+  // since the last sections can't reach the top of the form.
+  const picked = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (picked.current !== null) {
+        clearTimeout(picked.current);
+      }
+    },
+    []
+  );
+
+  const onScroll = (form: HTMLElement) => {
+    if (picked.current === null) {
+      setActive(visibleSection(form));
+      return;
+    }
+    clearTimeout(picked.current);
+    picked.current = setTimeout(() => {
+      picked.current = null;
+    }, 150);
+  };
 
   const go = (id: SectionId) => {
     if (id === "advanced") {
       setAdvanced(true);
     }
     setActive(id);
+    if (picked.current !== null) {
+      clearTimeout(picked.current);
+    }
+    picked.current = setTimeout(() => {
+      picked.current = null;
+    }, 150);
     requestAnimationFrame(() =>
       scroller.current
         ?.querySelector(`[data-section="${id}"]`)
@@ -635,8 +663,8 @@ function DesktopSections({
         ))}
       </nav>
       <div
-        className="flex min-w-0 flex-1 flex-col gap-8 overflow-y-auto px-6 pt-5 pb-8"
-        onScroll={(event) => setActive(visibleSection(event.currentTarget))}
+        className="relative flex min-w-0 flex-1 flex-col gap-8 overflow-y-auto px-6 pt-5 pb-8 *:shrink-0"
+        onScroll={(event) => onScroll(event.currentTarget)}
         ref={scroller}
       >
         {SECTIONS.filter((section) => section.id !== "advanced").map(
@@ -662,9 +690,16 @@ function DesktopSections({
   );
 }
 
-/** The last section whose heading has scrolled to the top of the form. */
+/**
+ * The last section whose heading has scrolled to the top of the form, or, once
+ * the form is scrolled to the end, into its upper half.
+ */
 function visibleSection(scroller: HTMLElement): SectionId {
-  const top = scroller.getBoundingClientRect().top + 32;
+  const atEnd =
+    scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2;
+  const top =
+    scroller.getBoundingClientRect().top +
+    (atEnd ? scroller.clientHeight / 2 : 32);
   let current: SectionId = "profile";
   for (const element of scroller.querySelectorAll<HTMLElement>(
     "[data-section]"

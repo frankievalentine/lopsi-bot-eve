@@ -85,7 +85,7 @@ export function RadioCard({
   return (
     <label
       className={cn(
-        "has-focus-visible:ring-ring/50 cursor-pointer has-focus-visible:ring-3",
+        "has-focus-visible:ring-ring/50 relative cursor-pointer has-focus-visible:ring-3",
         className
       )}
     >
