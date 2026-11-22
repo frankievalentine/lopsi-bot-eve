@@ -15,30 +15,12 @@ import {
   useComboboxAnchor,
 } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { MAX_FALLBACKS, type ReasoningLevel } from "@/lib/agent-model";
+import { MAX_FALLBACKS } from "@/lib/agent-model";
 
 export interface ModelOption {
   readonly id: string;
   readonly name: string;
 }
-
-const REASONING: readonly ReasoningLevel[] = [
-  "provider-default",
-  "none",
-  "minimal",
-  "low",
-  "medium",
-  "high",
-  "xhigh",
-];
-const NOT_SET = "Not set";
 
 /**
  * Base UI clears a combobox when Escape is pressed with its popup closed. In a
@@ -177,37 +159,5 @@ export function FallbackPicker({
         </ComboboxList>
       </ComboboxContent>
     </Combobox>
-  );
-}
-
-/** Reasoning effort; "Not set" leaves `reasoning` out of agent.ts. */
-export function ReasoningSelect({
-  onChange,
-  value,
-}: {
-  readonly onChange: (value: ReasoningLevel | "") => void;
-  readonly value: ReasoningLevel | "";
-}) {
-  return (
-    <Select
-      items={[
-        { label: NOT_SET, value: null },
-        ...REASONING.map((level) => ({ label: level, value: level })),
-      ]}
-      onValueChange={(next: ReasoningLevel | null) => onChange(next ?? "")}
-      value={value || null}
-    >
-      <SelectTrigger className="w-full sm:w-40">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value={null}>{NOT_SET}</SelectItem>
-        {REASONING.map((level) => (
-          <SelectItem key={level} value={level}>
-            {level}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
   );
 }

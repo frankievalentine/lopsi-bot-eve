@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckIcon, PlusIcon, XIcon } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Mascot, type MascotKind } from "@/components/mascot";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,20 +11,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { isModelId, type ReasoningLevel } from "@/lib/agent-model";
-import {
-  APPROVAL_CHOICES,
-  APPROVAL_LABELS,
-  type ApprovalMode,
-} from "@/lib/approval-labels";
+import { APPROVAL_LABELS, type ApprovalMode } from "@/lib/approval-labels";
 import { CREW } from "@/lib/crew";
 import { CREW_ID } from "@/lib/crew-core.mjs";
 import {
@@ -32,24 +21,36 @@ import {
   CREW_PRESETS,
   type CrewPreset,
   INSTRUCTION_SECTIONS,
-  MODEL_NOTES,
 } from "@/lib/crew-presets";
 import type { PullRequest } from "@/lib/github";
-import type { ToolSwitch } from "@/lib/member-access";
+import type { ToolSwitch, WebFetchMode } from "@/lib/member-access";
+import {
+  type ConnectorChoice,
+  type Connectors,
+  reasoningLabel,
+  WEB_FETCH,
+} from "@/lib/member-edit";
 import { cn } from "@/lib/utils";
 import {
   connectorChoices,
   modelOptions,
   proposeNewMember,
 } from "./config-actions";
-import type { ConnectorChoice } from "./member-access-fields";
 import { PullRequestOpened, useUnsavedWarning } from "./member-dialog-parts";
-import { type ModelOption, ModelPicker } from "./model-picker";
+import {
+  ApprovalChoice,
+  ModelChoice,
+  ReasoningChoice,
+  ServicesChoice,
+  ToolsChoice,
+} from "./member-fields";
+import type { ModelOption } from "./model-picker";
 
 /**
  * The New crew member wizard: a crew role fills in suggestions, then name,
  * model, instructions and access, then a review that opens the pull request.
- * Editing an existing member stays in member-config-dialog.tsx.
+ * Editing an existing member is edit-member-dialog.tsx; both share
+ * member-fields.tsx.
  */
 
 const STEPS = [
@@ -66,39 +67,6 @@ const MAX_PROMPTS = 4;
 const LOOKS: readonly { readonly kind: MascotKind; readonly name: string }[] =
   CREW_PRESETS.map(({ mascot, name }) => ({ kind: mascot, name }));
 
-/** Offered under the suggested model; each only when AI Gateway lists it. */
-const POPULAR_MODELS = [
-  "anthropic/claude-sonnet-5.5",
-  "openai/gpt-6.1-terra",
-  "google/gemini-3.8-flash",
-];
-
-const REASONING: readonly {
-  readonly label: string;
-  readonly value: ReasoningLevel | "";
-}[] = [
-  { label: "Default", value: "" },
-  { label: "Low", value: "low" },
-  { label: "Medium", value: "medium" },
-  { label: "High", value: "high" },
-];
-
-/** Shorter than the Edit form's hints: the cards sit side by side. */
-const MODE_HINTS: Record<ApprovalMode, string> = {
-  always: "Reads just happen. Each comment, post or edit waits for an OK.",
-  auto: "A reviewer model checks each change and asks when one looks risky or it can't decide.",
-  never: "Changes run without asking.",
-  once: "The first change in a chat waits for an OK; later ones in that chat run.",
-};
-
-type WebFetchChoice = "always" | "once" | "off";
-
-const WEB_FETCH: Record<WebFetchChoice, string> = {
-  always: "Ask every page",
-  off: "Off",
-  once: "Ask once per chat",
-};
-
 interface Prompt {
   readonly on: boolean;
   readonly text: string;
@@ -107,6 +75,7 @@ interface Prompt {
 interface WizardForm {
   readonly approvals: ApprovalMode;
   readonly bash: ToolSwitch;
+  readonly connectors: Connectors;
   /** Set once the folder is typed, so renaming no longer changes it. */
   readonly customFolder: boolean;
   readonly folder: string;
@@ -119,9 +88,7 @@ interface WizardForm {
   readonly prompts: readonly Prompt[];
   readonly reasoning: ReasoningLevel | "";
   readonly role: string;
-  /** Connectors unchecked on the Access step. */
-  readonly servicesOff: readonly string[];
-  readonly webFetch: WebFetchChoice;
+  readonly webFetch: WebFetchMode;
   readonly webSearch: ToolSwitch;
 }
 
@@ -153,6 +120,7 @@ function formFor(
   return {
     approvals: "always",
     bash: "on",
+    connectors: "all",
     customFolder: false,
     folder: preset.name ? folderFor(preset.name) : "",
     instructions: preset.instructions,
@@ -166,7 +134,6 @@ function formFor(
     })),
     reasoning: preset.reasoning,
     role: preset.role,
-    servicesOff: [],
     webFetch: "always",
     webSearch: "on",
   };
@@ -203,22 +170,12 @@ function reachable(step: number, form: WizardForm): boolean {
   return true;
 }
 
-/** The connectors left checked, or undefined for all of them (no `connectors` in crew.json). */
-function servicesOf(
-  form: WizardForm,
-  choices: readonly ConnectorChoice[]
-): string[] | undefined {
-  const off = new Set(form.servicesOff);
-  return off.size === 0
-    ? undefined
-    : choices.map((choice) => choice.id).filter((id) => !off.has(id));
-}
-
-function requestOf(form: WizardForm, choices: readonly ConnectorChoice[]) {
+function requestOf(form: WizardForm) {
   const suggestions = form.prompts
     .filter((prompt) => prompt.on)
     .map((prompt) => prompt.text);
-  const connectors = servicesOf(form, choices);
+  const connectors =
+    form.connectors === "all" ? undefined : [...form.connectors];
   return {
     config: {
       access: {
@@ -325,7 +282,7 @@ export function NewMemberWizard({
     setSaving(true);
     setError(null);
     try {
-      const result = await proposeNewMember(requestOf(form, choices));
+      const result = await proposeNewMember(requestOf(form));
       if (result.ok) {
         setPull(result.pull);
         onPullRequest?.();
@@ -756,127 +713,28 @@ function NameStep({ form, update }: StepProps) {
   );
 }
 
-/** The model cards: the role's suggestion, popular picks, and the current one, each only when AI Gateway lists it. */
-function useModelCards(
-  form: WizardForm,
-  models: readonly ModelOption[]
-): { readonly cards: readonly string[]; readonly suggested?: string } {
-  return useMemo(() => {
-    const listed = (id: string) =>
-      models.length === 0 || models.some((model) => model.id === id);
-    const suggested = form.preset?.model;
-    const cards = [
-      ...new Set([suggested ?? "", ...POPULAR_MODELS].filter(Boolean)),
-    ]
-      .filter(listed)
-      .slice(0, 3);
-    if (form.model && !cards.includes(form.model)) {
-      cards.push(form.model);
-    }
-    return {
-      cards,
-      ...(suggested && listed(suggested) ? { suggested } : {}),
-    };
-  }, [form.model, form.preset, models]);
-}
-
 function ModelStep({
   form,
   models,
   update,
 }: StepProps & { readonly models: readonly ModelOption[] }) {
-  const { cards, suggested } = useModelCards(form, models);
-  const [searching, setSearching] = useState(false);
-  const names = new Map(models.map((model) => [model.id, model.name]));
   const role = form.role.trim().toLowerCase() || "this role";
   return (
     <>
       <Heading hint="Runs through AI Gateway. You can change it any time in Edit.">
         Pick a model
       </Heading>
-      <fieldset className="flex flex-col gap-2">
-        <legend className="text-muted-foreground mb-2 text-xs font-medium">
-          Suggested for {role}
-        </legend>
-        {cards.map((id) => {
-          const selected = form.model === id;
-          return (
-            <RadioCard
-              checked={selected}
-              className={cn(
-                "hover:bg-muted/50 flex min-h-[60px] flex-wrap items-center gap-3.5 rounded-xl border px-3.5 py-2.5 transition-colors",
-                selected && "border-foreground ring-foreground ring-1"
-              )}
-              key={id}
-              name="model"
-              onSelect={() => update({ model: id })}
-            >
-              <span
-                className={cn(
-                  "size-[18px] shrink-0 rounded-full border-[1.5px]",
-                  selected && "border-foreground border-[5px]"
-                )}
-              />
-              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-semibold">
-                    {names.get(id) ?? id}
-                  </span>
-                  {id === suggested ? (
-                    <span className="rounded-full bg-green-100 px-2 text-[11px] leading-4 text-green-800">
-                      Suggested
-                    </span>
-                  ) : null}
-                </span>
-                {MODEL_NOTES[id] ? (
-                  <span className="text-muted-foreground text-[13px]">
-                    {MODEL_NOTES[id]}
-                  </span>
-                ) : null}
-              </span>
-              <span className="text-muted-foreground font-mono text-xs">
-                {id}
-              </span>
-            </RadioCard>
-          );
-        })}
-        {searching ? (
-          <ModelPicker
-            models={models}
-            onChange={(model) => update({ model })}
-            required={false}
-            value={cards.includes(form.model) ? "" : form.model}
-          />
-        ) : (
-          <button
-            className="text-muted-foreground hover:bg-muted/50 min-h-11 rounded-xl border border-dashed px-3.5 text-left text-[13px] transition-colors"
-            onClick={() => setSearching(true)}
-            type="button"
-          >
-            Search all models…
-          </button>
-        )}
-      </fieldset>
-      <fieldset>
-        <legend className="mb-2 text-[13px] font-medium">Reasoning</legend>
-        <span className="bg-muted inline-flex gap-0.5 rounded-[10px] p-[3px]">
-          {REASONING.map((option) => (
-            <RadioCard
-              checked={form.reasoning === option.value}
-              className={cn(
-                "text-muted-foreground inline-flex h-[34px] items-center rounded-lg px-3.5 text-[13px]",
-                form.reasoning === option.value &&
-                  "bg-background text-foreground shadow-xs"
-              )}
-              key={option.label}
-              name="reasoning"
-              onSelect={() => update({ reasoning: option.value })}
-            >
-              {option.label}
-            </RadioCard>
-          ))}
-        </span>
-      </fieldset>
+      <ModelChoice
+        legend={`Suggested for ${role}`}
+        models={models}
+        onChange={(model) => update({ model })}
+        value={form.model}
+        {...(form.preset ? { suggested: form.preset.model } : {})}
+      />
+      <ReasoningChoice
+        onChange={(reasoning) => update({ reasoning })}
+        value={form.reasoning}
+      />
     </>
   );
 }
@@ -1005,219 +863,34 @@ function AccessStep({
   update,
 }: StepProps & { readonly choices: readonly ConnectorChoice[] }) {
   const name = form.name.trim() || "this member";
-  const off = new Set(form.servicesOff);
   return (
     <>
       <Heading hint="Connected services, built-in tools, and when to check with you.">
         What can {name} reach?
       </Heading>
-
-      <section className="flex flex-col gap-2">
-        <fieldset>
-          <legend className="mb-2 text-[13px] font-medium">
-            Changes in connected services
-          </legend>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {APPROVAL_CHOICES.map((mode) => {
-              const selected = form.approvals === mode;
-              return (
-                <RadioCard
-                  checked={selected}
-                  className={cn(
-                    "hover:bg-muted/50 flex flex-col items-start gap-1 rounded-xl border px-3.5 py-3 transition-colors",
-                    selected &&
-                      (mode === "never"
-                        ? "border-orange-600 ring-1 ring-orange-600"
-                        : "border-foreground ring-foreground ring-1")
-                  )}
-                  key={mode}
-                  name="approvals"
-                  onSelect={() => update({ approvals: mode })}
-                >
-                  <span className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold">
-                      {APPROVAL_LABELS[mode].label}
-                    </span>
-                    {mode === "always" ? (
-                      <span className="rounded-full bg-green-100 px-2 text-[11px] leading-4 text-green-800">
-                        Default
-                      </span>
-                    ) : null}
-                  </span>
-                  <span className="text-muted-foreground text-[13px]">
-                    {MODE_HINTS[mode]}
-                  </span>
-                </RadioCard>
-              );
-            })}
-          </div>
-        </fieldset>
-        {form.approvals === "never" ? (
-          <div
-            className="flex items-center gap-2.5 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 dark:border-orange-900 dark:bg-orange-950"
-            role="note"
-          >
-            <Mascot kind={form.mascot} mood="needs" size={36} />
-            <span className="text-[13px] text-orange-800 dark:text-orange-200">
-              Anyone who can chat with {name} can have it change things through
-              its services, and a page {name} reads could try to steer it.
-            </span>
-          </div>
-        ) : null}
-        {form.approvals === "auto" ? (
-          <p className="text-muted-foreground text-xs">
-            The reviewer sees the request, never the credential, through AI
-            Gateway with no data kept.
-          </p>
-        ) : null}
-        <p className="text-muted-foreground text-xs">
-          Either way, the first visit to a new website asks once, so your
-          credentials only go where you've allowed.
-        </p>
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <h3 className="text-[13px] font-medium">Services</h3>
-        {choices.length === 0 ? (
-          <p className="text-muted-foreground rounded-xl border px-3.5 py-3 text-[13px]">
-            No connectors are attached to this project yet. Once one is, every
-            member can use it unless its Edit form limits it.
-          </p>
-        ) : (
-          <div className="flex flex-col overflow-hidden rounded-xl border">
-            {choices.map((choice) => (
-              <label
-                className="flex min-h-11 items-center gap-3 border-b px-3.5 last:border-b-0"
-                key={choice.id}
-              >
-                <input
-                  checked={!off.has(choice.id)}
-                  className="accent-primary size-4"
-                  onChange={(e) =>
-                    update({
-                      servicesOff: e.target.checked
-                        ? form.servicesOff.filter((id) => id !== choice.id)
-                        : [...form.servicesOff, choice.id],
-                    })
-                  }
-                  type="checkbox"
-                />
-                <span className="flex-1">{choice.name}</span>
-              </label>
-            ))}
-          </div>
-        )}
-        {form.preset ? (
-          <p className="text-muted-foreground text-xs">
-            {form.preset.servicesTip}
-          </p>
-        ) : null}
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <h3 className="text-[13px] font-medium">Built-in tools</h3>
-        <div className="grid gap-2 sm:grid-cols-3">
-          <ToolBox
-            checked={form.bash === "on"}
-            label="Shell"
-            onChange={(on) => update({ bash: on ? "on" : "off" })}
-          />
-          <ToolBox
-            checked={form.webSearch === "on"}
-            label="Web search"
-            onChange={(on) => update({ webSearch: on ? "on" : "off" })}
-          />
-          <div className="flex min-h-11 items-center gap-2 rounded-xl border px-3">
-            <span>Pages</span>
-            <Select
-              items={(["always", "once", "off"] as const).map((mode) => ({
-                label: WEB_FETCH[mode],
-                value: mode,
-              }))}
-              onValueChange={(next: WebFetchChoice | null) =>
-                next && update({ webFetch: next })
-              }
-              value={form.webFetch}
-            >
-              <SelectTrigger
-                aria-label="Web pages"
-                className="min-w-0 flex-1"
-                size="sm"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(["always", "once", "off"] as const).map((mode) => (
-                  <SelectItem key={mode} value={mode}>
-                    {WEB_FETCH[mode]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <p className="text-muted-foreground text-xs">
-          Fetching a page runs outside the sandbox, so a URL could carry chat
-          data away; asking every page lets you see each one. The sandbox's
-          network starts as the template member's.
-        </p>
-      </section>
-    </>
-  );
-}
-
-/** A card or segment that's one choice of a radio group: a real radio input, visually hidden. */
-function RadioCard({
-  checked,
-  children,
-  className,
-  name,
-  onSelect,
-}: {
-  readonly checked: boolean;
-  readonly children: ReactNode;
-  readonly className: string;
-  readonly name: string;
-  readonly onSelect: () => void;
-}) {
-  return (
-    <label
-      className={cn(
-        "has-focus-visible:ring-ring/50 cursor-pointer has-focus-visible:ring-3",
-        className
-      )}
-    >
-      <input
-        checked={checked}
-        className="sr-only"
+      <ApprovalChoice
+        mascot={form.mascot}
         name={name}
-        onChange={onSelect}
-        type="radio"
+        onChange={(approvals) => update({ approvals })}
+        value={form.approvals}
       />
-      {children}
-    </label>
-  );
-}
-
-function ToolBox({
-  checked,
-  label,
-  onChange,
-}: {
-  readonly checked: boolean;
-  readonly label: string;
-  readonly onChange: (checked: boolean) => void;
-}) {
-  return (
-    <label className="flex min-h-11 items-center gap-2.5 rounded-xl border px-3">
-      <input
-        checked={checked}
-        className="accent-primary size-4"
-        onChange={(e) => onChange(e.target.checked)}
-        type="checkbox"
+      <ServicesChoice
+        choices={choices}
+        name={name}
+        onChange={(connectors) => update({ connectors })}
+        value={form.connectors}
+        {...(form.preset ? { tip: form.preset.servicesTip } : {})}
       />
-      {label}
-    </label>
+      <ToolsChoice
+        note="Fetching a page runs outside the sandbox, so a URL could carry chat data away; asking every page lets you see each one. The sandbox's network starts as the template member's."
+        onChange={(tools) => update(tools)}
+        value={{
+          bash: form.bash,
+          webFetch: form.webFetch,
+          webSearch: form.webSearch,
+        }}
+      />
+    </>
   );
 }
 
@@ -1249,8 +922,10 @@ function ReviewStep({
 }) {
   const name = form.name.trim();
   const prompts = form.prompts.filter((prompt) => prompt.on).length;
-  const services = servicesOf(form, choices);
-  const serviceNames = servicesLabel(services, choices);
+  const serviceNames = servicesLabel(
+    form.connectors === "all" ? undefined : form.connectors,
+    choices
+  );
   const tools = [
     form.bash === "on" ? "Shell" : "",
     form.webSearch === "on" ? "Web search" : "",
@@ -1260,7 +935,7 @@ function ReviewStep({
   ]
     .filter(Boolean)
     .join(", ");
-  const reasoning = REASONING.find((r) => r.value === form.reasoning)?.label;
+  const reasoning = reasoningLabel(form.reasoning);
   const rows: readonly [string, string, number][] = [
     [
       "Role",
@@ -1272,7 +947,7 @@ function ReviewStep({
     ["Name", `${name} (agents/${form.folder})`, 1],
     [
       "Model",
-      `${models.find((m) => m.id === form.model)?.name ?? form.model}, ${reasoning?.toLowerCase()} reasoning`,
+      `${models.find((m) => m.id === form.model)?.name ?? form.model}, ${reasoning.toLowerCase()} reasoning`,
       2,
     ],
     [
