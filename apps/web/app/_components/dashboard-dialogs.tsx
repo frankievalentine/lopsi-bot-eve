@@ -16,6 +16,9 @@ const ConnectionsDialog = dynamic(() =>
 const MemberConfigDialog = dynamic(() =>
   import("./member-config-dialog").then((module) => module.MemberConfigDialog)
 );
+const NewMemberWizard = dynamic(() =>
+  import("./new-member-wizard").then((module) => module.NewMemberWizard)
+);
 const RemoveProjectDialog = dynamic(() =>
   import("./remove-project-dialog").then((module) => module.RemoveProjectDialog)
 );
@@ -32,10 +35,6 @@ function useOpenedOnce(open: boolean): boolean {
   return opened;
 }
 
-type MemberDialogMode =
-  | { readonly kind: "edit"; readonly memberId: string }
-  | { readonly kind: "new" };
-
 /** What opens the dashboard's dialogs; absent where a dialog isn't available. */
 export interface DashboardDialogActions {
   readonly openConnections?: () => void;
@@ -49,7 +48,8 @@ export interface DashboardDialogActions {
 
 /**
  * The dashboard's dialogs, one of each, and what opens them: Settings,
- * Connections, a crew member's Edit or a new one, and Pending changes.
+ * Connections, a crew member's Edit, the New crew member wizard, and Pending
+ * changes.
  * Settings opens the others through the same actions.
  */
 export function useDashboardDialogs({
@@ -62,16 +62,16 @@ export function useDashboardDialogs({
   readonly connectors: readonly ConnectorSummary[];
 }): { actions: DashboardDialogActions; dialogs: ReactElement } {
   const [connectionsOpen, setConnectionsOpen] = useState(false);
-  const [memberDialog, setMemberDialog] = useState<MemberDialogMode | null>(
-    null
-  );
+  const [editing, setEditing] = useState<string | null>(null);
+  const [newOpen, setNewOpen] = useState(false);
   const [pendingOpen, setPendingOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [removeOpen, setRemoveOpen] = useState(false);
   const removeOpened = useOpenedOnce(removeOpen);
   const settingsOpened = useOpenedOnce(settingsOpen);
   const connectionsOpened = useOpenedOnce(connectionsOpen);
-  const memberOpened = useOpenedOnce(memberDialog !== null);
+  const editOpened = useOpenedOnce(editing !== null);
+  const newOpened = useOpenedOnce(newOpen);
   const canChange = changes?.available === true;
   const pending = usePendingCount(canChange);
   const hasConnectors = connectors.length > 0;
@@ -84,9 +84,8 @@ export function useDashboardDialogs({
       : {}),
     ...(canChange
       ? {
-          openEdit: (memberId: string) =>
-            setMemberDialog({ kind: "edit", memberId }),
-          openNewMember: () => setMemberDialog({ kind: "new" }),
+          openEdit: (memberId: string) => setEditing(memberId),
+          openNewMember: () => setNewOpen(true),
           openPendingChanges: () => setPendingOpen(true),
         }
       : {}),
@@ -117,12 +116,19 @@ export function useDashboardDialogs({
       ) : null}
       {canChange ? (
         <>
-          {memberOpened ? (
+          {editOpened ? (
             <MemberConfigDialog
-              mode={memberDialog ?? { kind: "new" }}
-              onOpenChange={(next) => !next && setMemberDialog(null)}
+              mode={{ kind: "edit", memberId: editing ?? "" }}
+              onOpenChange={(next) => !next && setEditing(null)}
               onPullRequest={pending.refresh}
-              open={memberDialog !== null}
+              open={editing !== null}
+            />
+          ) : null}
+          {newOpened ? (
+            <NewMemberWizard
+              onOpenChange={setNewOpen}
+              onPullRequest={pending.refresh}
+              open={newOpen}
             />
           ) : null}
           <PendingChangesDialog

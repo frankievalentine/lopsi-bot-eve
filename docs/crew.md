@@ -26,11 +26,12 @@ Changes open the dashboard's own dialogs: Connections, Pending Changes, and a me
 
 ## Changing the crew from the dashboard
 
-Agents are code, so the dashboard never changes a running agent. **Edit** in a chat's menu (name, role, mascot, suggestions, order, model and instructions, plus which connectors the member may use and when it asks before changing things in them, its built-in tools (shell, web search, web pages and how often they ask), and which domains its sandbox may reach) and **New crew member** in the sidebar each open a pull request against the branch this deployment was built from. Merging it deploys the change; **Pending Changes** lists the open ones.
+Agents are code, so the dashboard never changes a running agent. **Edit** in a chat's menu (name, role, mascot, suggestions, order, model and instructions, plus which connectors the member may use and when it asks before changing things in them, its built-in tools (shell, web search, web pages and how often they ask), and which domains its sandbox may reach) and **New crew member** in the sidebar (a step-by-step wizard that starts from a crew role) each open a pull request against the branch this deployment was built from. Merging it deploys the change; **Pending Changes** lists the open ones.
 
 This needs a GitHub connector in Vercel Connect: the GitHub App the Deploy button creates (`GITHUB_CONNECTOR`), or any GitHub connector attached to the project. Install the app on the repository with read and write access to contents and pull requests. The repository and branch come from Vercel's Git variables; set `LOPSI_GITHUB_REPO` (`owner/repo`) and `LOPSI_GITHUB_BRANCH` to override them, as in local development.
 
 - A pull request is a draft where GitHub allows one; it names who asked for it and lists the files it touches.
 - An edit is refused if the crew member changed on the branch since the dialog opened.
 - The model can be changed while `agent.ts` still has eve's generated shape; after a hand edit, change it there. Instructions must be a single `instructions.md`.
-- A new crew member copies `agents/lopsi`'s web and email channels, connections, hooks, tools, memory, session budget and sandbox, and gets its own `agent.ts`, `instructions.md` and `crew.json`. Slack and Telegram stay with Lopsi, which answers them.
+- A new crew member copies `agents/lopsi`'s web and email channels, connections, hooks, tools, memory, session budget and sandbox, and gets its own `agent.ts`, `instructions.md` and `crew.json`. The wizard's choices for the shell, web search and web pages replace the copied tool files; the sandbox's network stays as Lopsi's. Slack and Telegram stay with Lopsi, which answers them.
+- The wizard's roles (Scout, Chief, Beacon, Ledger, Tinker, Relay, or Start blank) live in `apps/web/lib/crew-presets.ts`: each suggests a look, model, starter prompts and an instructions draft. A suggested model is offered only while AI Gateway lists it.
